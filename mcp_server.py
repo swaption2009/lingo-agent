@@ -39,7 +39,7 @@ def search_learning_media(query: str, language: str = "Spanish") -> dict:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT content_id, title, artist_or_movie, media_type, difficulty 
+    SELECT content_id, title, artist_or_movie, media_type, difficulty, pinyin_text, video_id 
     FROM media_content 
     WHERE language = ? AND (title LIKE ? OR artist_or_movie LIKE ?)
     """, (language, f"%{query}%", f"%{query}%"))
@@ -53,13 +53,15 @@ def search_learning_media(query: str, language: str = "Spanish") -> dict:
             "title": r[1],
             "artist_or_movie": r[2],
             "media_type": r[3],
-            "difficulty": r[4]
+            "difficulty": r[4],
+            "pinyin_text": r[5],
+            "video_id": r[6]
         })
     return {"results": results}
 
 @mcp.tool()
 def get_media_content(content_id: int) -> dict:
-    """Retrieves the full content lines and line-by-line translations for a specific song or movie.
+    """Retrieves the full content lines, translations, and optionally pinyin for a specific song or movie.
     
     Args:
         content_id: The unique ID of the media content.
@@ -67,7 +69,7 @@ def get_media_content(content_id: int) -> dict:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT content_id, title, artist_or_movie, media_type, original_text, translated_text 
+    SELECT content_id, title, artist_or_movie, media_type, original_text, translated_text, pinyin_text, video_id 
     FROM media_content WHERE content_id = ?
     """, (content_id,))
     row = cursor.fetchone()
@@ -79,12 +81,14 @@ def get_media_content(content_id: int) -> dict:
             "artist_or_movie": row[2],
             "media_type": row[3],
             "original_text": row[4],
-            "translated_text": row[5]
+            "translated_text": row[5],
+            "pinyin_text": row[6],
+            "video_id": row[7]
         }
     return {"error": "Content not found"}
 
 @mcp.tool()
-def add_vocabulary_word(word: str, translation: str, context: str, user_id: int = 1) -> dict:
+def add_vocabulary_word(word: str, translation: str, context: str, user_id: int = 1, pinyin: str = None) -> dict:
     """Adds a newly learned word or phrase to the user's flashcard deck for spaced repetition.
     
     Args:
@@ -92,6 +96,7 @@ def add_vocabulary_word(word: str, translation: str, context: str, user_id: int 
         translation: The native language translation.
         context: The line or sentence where the word was encountered.
         user_id: The ID of the user. Defaults to 1.
+        pinyin: Hanyu Pinyin for Chinese words. Defaults to None.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -108,9 +113,9 @@ def add_vocabulary_word(word: str, translation: str, context: str, user_id: int 
         return {"status": "already_exists", "message": f"'{word}' is already in your vocabulary deck."}
         
     cursor.execute("""
-    INSERT INTO vocabulary_deck (user_id, word, translation, context_sentence, box_number, next_review_date)
-    VALUES (?, ?, ?, ?, 1, ?)
-    """, (user_id, word, translation, context, next_review))
+    INSERT INTO vocabulary_deck (user_id, word, translation, context_sentence, pinyin, box_number, next_review_date)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
+    """, (user_id, word, translation, context, pinyin, next_review))
     conn.commit()
     conn.close()
     return {
@@ -118,6 +123,7 @@ def add_vocabulary_word(word: str, translation: str, context: str, user_id: int 
         "message": f"Added '{word}' to your flashcard deck.",
         "word": word,
         "translation": translation,
+        "pinyin": pinyin,
         "next_review_date": next_review
     }
 
@@ -131,7 +137,7 @@ def get_vocab_deck(user_id: int = 1) -> dict:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT vocab_id, word, translation, context_sentence, box_number, next_review_date 
+    SELECT vocab_id, word, translation, context_sentence, pinyin, box_number, next_review_date 
     FROM vocabulary_deck WHERE user_id = ?
     """, (user_id,))
     rows = cursor.fetchall()
@@ -144,8 +150,9 @@ def get_vocab_deck(user_id: int = 1) -> dict:
             "word": r[1],
             "translation": r[2],
             "context_sentence": r[3],
-            "box_number": r[4],
-            "next_review_date": r[5]
+            "pinyin": r[4],
+            "box_number": r[5],
+            "next_review_date": r[6]
         })
     return {"deck": deck}
 
@@ -177,6 +184,17 @@ def reset_vocab_deck(user_id: int = 1) -> dict:
     conn.commit()
     conn.close()
     return {"status": "success", "message": "All vocabulary words cleared."}
+
+@mcp.tool()
+def mcp_analyze_youtube_video(video_id: str, title: str = "") -> dict:
+    """Fetches and transcribes a YouTube video, generating Hanyu Pinyin and English translations.
+    
+    Args:
+        video_id: The 11-character YouTube video ID.
+        title: Optional title of the video/song.
+    """
+    from app.chinese_analyzer import analyze_youtube_video
+    return analyze_youtube_video(video_id, title)
 
 if __name__ == "__main__":
     mcp.run()

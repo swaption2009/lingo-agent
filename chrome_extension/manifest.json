@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Lingo Karaoke & Cinema Lingo",
+  "version": "1.0",
+  "description": "Learn Chinese with Hanyu Pinyin, dictionaries, quizzes, and tutorials directly synced with YouTube videos.",
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {},
+  "side_panel": {
+    "default_path": "side_panel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/watch*"],
+      "js": ["content.js"]
+    }
+  ]
+}
