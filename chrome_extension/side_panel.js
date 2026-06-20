@@ -102,23 +102,19 @@ async function detectActiveTab() {
       return;
     }
 
-    // Send message to Content Script to get player status
-    chrome.tabs.sendMessage(tab.id, { type: 'GET_PLAYER_STATUS' }, (response) => {
+    // Send message to Content Script to get player status.
+    // If the content script isn't injected (e.g. extension was reloaded while
+    // YouTube was already open), inject it on-demand and retry once.
+    const handlePlayerResponse = (response) => {
       loading.classList.add('hidden');
 
-      if (chrome.runtime.lastError || !response || response.status !== 'ready') {
+      if (!response || response.status !== 'ready') {
         inactive.classList.remove('hidden');
         activeVideoId = null;
         stopPlaybackPolling();
-        // Note: we intentionally KEEP the existing analysis here. Tabbing away to
-        // a non-YouTube tab shouldn't wipe lyrics; we only clear when we positively
-        // detect a *different* video (below), which is the real bug to fix.
         return;
       }
 
-      // If the playing video changed, clear the stale analysis so we never show
-      // one video's lyrics while a different video is playing. This is the core
-      // fix for both reported bugs (stale lyrics + analyzing the wrong video).
       if (analyzedVideoId && response.videoId !== analyzedVideoId) {
         resetAnalysisUI();
       }
@@ -129,8 +125,36 @@ async function detectActiveTab() {
       document.getElementById('detected-video-title').textContent = activeVideoTitle;
       active.classList.remove('hidden');
 
-      // Start polling for synchronized lyrics playback
       startPlaybackPolling(tab.id);
+    };
+
+    chrome.tabs.sendMessage(tab.id, { type: 'GET_PLAYER_STATUS' }, (response) => {
+      if (chrome.runtime.lastError) {
+        // Content script not injected yet — inject it and retry once.
+        chrome.scripting.executeScript(
+          { target: { tabId: tab.id }, files: ['content.js'] },
+          () => {
+            if (chrome.runtime.lastError) {
+              loading.classList.add('hidden');
+              inactive.classList.remove('hidden');
+              return;
+            }
+            // Give the freshly-injected script a moment to initialise.
+            setTimeout(() => {
+              chrome.tabs.sendMessage(tab.id, { type: 'GET_PLAYER_STATUS' }, (retryResponse) => {
+                if (chrome.runtime.lastError) {
+                  loading.classList.add('hidden');
+                  inactive.classList.remove('hidden');
+                  return;
+                }
+                handlePlayerResponse(retryResponse);
+              });
+            }, 300);
+          }
+        );
+        return;
+      }
+      handlePlayerResponse(response);
     });
   } catch (err) {
     loading.classList.add('hidden');
