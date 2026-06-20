@@ -12,6 +12,7 @@ let currentHighlightIndex = -1;
 let currentVocabList = []; // Dictionary items for current song
 let activeQuizQuestions = [];
 let currentQuizQuestionIndex = 0;
+let analyzedVideoId = null; // the video id whose analysis is currently on screen
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -107,13 +108,24 @@ async function detectActiveTab() {
 
       if (chrome.runtime.lastError || !response || response.status !== 'ready') {
         inactive.classList.remove('hidden');
+        activeVideoId = null;
         stopPlaybackPolling();
+        // Note: we intentionally KEEP the existing analysis here. Tabbing away to
+        // a non-YouTube tab shouldn't wipe lyrics; we only clear when we positively
+        // detect a *different* video (below), which is the real bug to fix.
         return;
+      }
+
+      // If the playing video changed, clear the stale analysis so we never show
+      // one video's lyrics while a different video is playing. This is the core
+      // fix for both reported bugs (stale lyrics + analyzing the wrong video).
+      if (analyzedVideoId && response.videoId !== analyzedVideoId) {
+        resetAnalysisUI();
       }
 
       activeVideoId = response.videoId;
       activeVideoTitle = response.title;
-      
+
       document.getElementById('detected-video-title').textContent = activeVideoTitle;
       active.classList.remove('hidden');
 
@@ -210,12 +222,53 @@ function syncLyricsHighlight(time) {
   }
 }
 
+// Ask the content script for the video that is playing RIGHT NOW.
+// Returns the status response, or null if the active tab is not a YouTube video.
+function getCurrentVideoStatus() {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      if (!tab || !tab.url || !tab.url.includes('youtube.com/watch')) {
+        resolve(null);
+        return;
+      }
+      chrome.tabs.sendMessage(tab.id, { type: 'GET_PLAYER_STATUS' }, (response) => {
+        if (chrome.runtime.lastError || !response || response.status !== 'ready') {
+          resolve(null);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  });
+}
+
 // Analyze Current YouTube Video
 async function analyzeCurrentVideo() {
   if (!connectionActive) {
     alert("Backend is offline. Please launch the FastAPI server first.");
     return;
   }
+
+  // Re-confirm what is actually playing now. Because YouTube swaps videos via
+  // SPA navigation, the cached activeVideoId can be stale; analyzing it would
+  // return the previous video's lyrics. Always analyze the live video id.
+  const current = await getCurrentVideoStatus();
+  if (current && current.videoId) {
+    if (analyzedVideoId && current.videoId !== analyzedVideoId) {
+      resetAnalysisUI();
+    }
+    activeVideoId = current.videoId;
+    activeVideoTitle = current.title;
+    document.getElementById('detected-video-title').textContent = activeVideoTitle;
+  }
+
+  if (!activeVideoId) {
+    alert("No active YouTube video detected. Open a YouTube watch page and try again.");
+    return;
+  }
+
+  const videoId = activeVideoId;
+  const title = activeVideoTitle;
 
   const btn = document.getElementById('btn-analyze-video');
   const btnText = btn.querySelector('.btn-text');
@@ -229,21 +282,77 @@ async function analyzeCurrentVideo() {
     const res = await fetch(`${BACKEND_URL}/api/youtube/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ video_id: activeVideoId, title: activeVideoTitle })
+      body: JSON.stringify({ video_id: videoId, title: title })
     });
 
-    if (!res.ok) throw new Error("Failed to analyze video");
+    if (!res.ok) {
+      let errorMsg = "Error transcribing and analyzing the YouTube video.";
+      try {
+        const errorData = await res.json();
+        if (errorData && errorData.detail) {
+          errorMsg = errorData.detail;
+        }
+      } catch (jsonErr) {}
+      throw new Error(errorMsg);
+    }
 
     const data = await res.json();
     loadAnalysisData(data);
+    // Remember which video this analysis belongs to so we can detect changes.
+    analyzedVideoId = videoId;
   } catch (err) {
     console.error(err);
-    alert("Error transcribing and analyzing the YouTube video. Please try again.");
+    alert(err.message || "Error transcribing and analyzing the YouTube video. Please try again.");
   } finally {
     btn.disabled = false;
     btnText.classList.remove('hidden');
     btnLoading.classList.add('hidden');
   }
+}
+
+// Reset the per-video analysis UI (lyrics, dictionary, quiz) back to its empty
+// placeholder state. Does NOT touch the saved vocabulary deck, which is global.
+function resetAnalysisUI() {
+  analyzedVideoId = null;
+
+  // Lyrics
+  lyricsData = [];
+  currentHighlightIndex = -1;
+  const lyricsList = document.getElementById('lyrics-list');
+  lyricsList.innerHTML = '';
+  lyricsList.classList.add('hidden');
+  document.getElementById('lyrics-placeholder').classList.remove('hidden');
+  document.getElementById('player-controls').classList.add('hidden');
+  hideSourceNotice();
+
+  // Dictionary
+  currentVocabList = [];
+  document.getElementById('vocab-cards-list').innerHTML = '';
+  document.getElementById('dictionary-content').classList.add('hidden');
+  document.getElementById('dictionary-placeholder').classList.remove('hidden');
+
+  // Quiz
+  activeQuizQuestions = [];
+  currentQuizQuestionIndex = 0;
+  document.getElementById('quiz-content').classList.add('hidden');
+  document.getElementById('quiz-placeholder').classList.remove('hidden');
+}
+
+// Show a banner when lyrics did not come from the video's own captions.
+function showSourceNotice(source) {
+  const el = document.getElementById('lyrics-source-notice');
+  if (!el) return;
+  if (source === 'web_search') {
+    el.textContent = 'No captions found for this video — these lyrics were fetched from the web and may not line up exactly with the audio.';
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
+function hideSourceNotice() {
+  const el = document.getElementById('lyrics-source-notice');
+  if (el) el.classList.add('hidden');
 }
 
 // Load Analyzed Video Data into UI
@@ -256,6 +365,9 @@ function loadAnalysisData(data) {
   placeholder.classList.add('hidden');
   list.classList.remove('hidden');
   controls.classList.remove('hidden');
+
+  // Tell the user when lyrics were sourced from the web rather than captions.
+  showSourceNotice(data.source);
 
   list.innerHTML = '';
   lyricsData = [];

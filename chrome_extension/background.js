@@ -8,20 +8,34 @@ chrome.runtime.onInstalled.addListener(() => {
   }
 });
 
-// Optional: Monitor tab changes and let the side panel know if a YouTube video is loaded
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url && tab.url.includes('youtube.com/watch')) {
-    try {
-      // Send a status update event that the side panel can listen to
-      chrome.runtime.sendMessage({
-        type: 'YOUTUBE_TAB_UPDATED',
-        tabId: tabId,
-        url: tab.url
-      }).catch(() => {
-        // Ignore errors if the side panel is not open/active yet
-      });
-    } catch (err) {
-      console.warn("Could not send tab update message:", err);
-    }
+// Tell the side panel that the active tab/video may have changed so it can
+// re-detect the current video and clear any stale lyrics.
+function notifySidePanel(tabId, url) {
+  chrome.runtime.sendMessage({ type: 'YOUTUBE_TAB_UPDATED', tabId, url: url || '' })
+    .catch(() => {
+      // The side panel may not be open/listening yet; safe to ignore.
+    });
+}
+
+// IMPORTANT: YouTube is a single-page app. Navigating between videos updates the
+// URL via history.pushState WITHOUT a full document reload, so it usually does
+// NOT fire `status: 'complete'`. We must therefore react to `changeInfo.url`
+// (the SPA navigation signal) as well, otherwise switching videos goes unnoticed
+// and the panel keeps showing the previous video's lyrics.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  const url = changeInfo.url || (tab && tab.url) || '';
+  if ((changeInfo.url || changeInfo.status === 'complete') && url.includes('youtube.com')) {
+    notifySidePanel(tabId, url);
+  }
+});
+
+// Switching browser tabs should also refresh detection (e.g. moving to/from a
+// YouTube tab). The panel itself decides whether the newly-active tab is a video.
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    notifySidePanel(tabId, tab.url);
+  } catch (err) {
+    // Tab may have been closed before we could read it; ignore.
   }
 });

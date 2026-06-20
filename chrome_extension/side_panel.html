@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="side_panel.css">
   <!-- Import Orbitron and Outfit fonts for premium developer/modern look -->
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <script src="side_panel.js" defer></script>
 </head>
 <body>
   <div class="glass-container">
@@ -63,6 +64,7 @@
       <!-- Tab 1: Lyrics Reader -->
       <div id="tab-lyrics" class="tab-panel active">
         <div class="lyrics-container">
+          <div id="lyrics-source-notice" class="source-notice hidden"></div>
           <div id="lyrics-placeholder" class="placeholder-state">
             <p>Analyze a Chinese video to load synchronized pinyin and translations.</p>
           </div>
