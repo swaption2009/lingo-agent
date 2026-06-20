@@ -1,0 +1,84 @@
+{
+  "eval_set_id": "lingo_agent_eval",
+  "name": "LingoKaraoke & CinemaLingo Evaluation",
+  "description": "Validates routing and correct MCP tool usage for greeting, searching content, and saving vocabulary.",
+  "eval_cases": [
+    {
+      "eval_id": "greeting_and_profile",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [{"text": "Hello! Show my profile."}]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "get_user_profile",
+                "args": {}
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "app",
+        "user_id": "test_user_1",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "search_and_practice",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [{"text": "Search for La Bamba and start practicing it"}]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "get_user_profile",
+                "args": {}
+              },
+              {
+                "name": "search_learning_media",
+                "args": {"query": "La Bamba"}
+              },
+              {
+                "name": "get_media_content",
+                "args": {"content_id": 1}
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "app",
+        "user_id": "test_user_2",
+        "state": {}
+      }
+    },
+    {
+      "eval_id": "add_vocabulary",
+      "conversation": [
+        {
+          "user_content": {
+            "parts": [{"text": "Save the word bailar meaning to dance with context Para bailar la bamba to my flashcards"}]
+          },
+          "intermediate_data": {
+            "tool_uses": [
+              {
+                "name": "add_vocabulary_word",
+                "args": {"word": "bailar", "translation": "to dance", "context": "Para bailar la bamba"}
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "app",
+        "user_id": "test_user_3",
+        "state": {}
+      }
+    }
+  ]
+}
