@@ -144,6 +144,7 @@ function startPlaybackPolling(tabId) {
   stopPlaybackPolling();
   playbackPollInterval = setInterval(() => {
     chrome.tabs.sendMessage(tabId, { type: 'GET_PLAYER_STATUS' }, (response) => {
+      if (chrome.runtime.lastError) return; // content script not ready
       if (response && response.status === 'ready') {
         currentPlayTime = response.currentTime;
         updatePlayerTimeUI(response.currentTime, response.duration, response.paused);
@@ -184,6 +185,7 @@ async function togglePlayback() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab) {
     chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_PLAYBACK' }, (response) => {
+      if (chrome.runtime.lastError) return; // content script not ready
       if (response && response.status === 'success') {
         const playBtn = document.getElementById('btn-play-pause');
         playBtn.textContent = response.paused ? '▶️' : '⏸️';
@@ -412,7 +414,9 @@ function loadAnalysisData(data) {
     lineDiv.addEventListener('click', async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab) {
-        chrome.tabs.sendMessage(tab.id, { type: 'SEEK_PLAYER', time: startVal });
+        chrome.tabs.sendMessage(tab.id, { type: 'SEEK_PLAYER', time: startVal }, () => {
+          if (chrome.runtime.lastError) {} // suppress if content script not ready
+        });
       }
     });
 
