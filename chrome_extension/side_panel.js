@@ -1,6 +1,6 @@
 // side_panel.js for Lingo Karaoke Extension
 
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = "http://localhost:8001";
 let activeVideoId = null;
 let activeVideoTitle = null;
 let connectionActive = false;
@@ -13,16 +13,62 @@ let currentVocabList = []; // Dictionary items for current song
 let activeQuizQuestions = [];
 let currentQuizQuestionIndex = 0;
 let analyzedVideoId = null; // the video id whose analysis is currently on screen
+let currentlyAnalyzingVideoId = null; // prevent duplicate concurrent runs
+
+function getSelectedUserId() {
+  const select = document.getElementById('ext-user-select');
+  return select ? parseInt(select.value) || 2 : 2;
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
+  
+  // Listen for profile changes (hidden compatibility select)
+  const userSelect = document.getElementById('ext-user-select');
+  if (userSelect) {
+    userSelect.addEventListener('change', () => {
+      localStorage.setItem('ext_selected_user_id', userSelect.value);
+      loadVocabDeck();
+    });
+  }
+
+  // Auth Form Submission
+  const formLogin = document.getElementById('form-login');
+  if (formLogin) {
+    formLogin.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const usernameInput = document.getElementById('login-username').value.trim();
+      const errorDiv = document.getElementById('login-error');
+      
+      if (usernameInput.toLowerCase() === 'chinese_learner') {
+        localStorage.setItem('ext_logged_in_user', 'chinese_learner');
+        localStorage.setItem('ext_selected_user_id', '2');
+        errorDiv.classList.add('hidden');
+        checkAuthSession();
+      } else {
+        errorDiv.textContent = "Access denied. You must login as 'chinese_learner'.";
+        errorDiv.classList.remove('hidden');
+      }
+    });
+  }
+
+  // Logout Button
+  const btnLogout = document.getElementById('btn-ext-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      localStorage.removeItem('ext_logged_in_user');
+      localStorage.removeItem('ext_selected_user_id');
+      checkAuthSession();
+    });
+  }
+
   checkBackendConnection();
-  detectActiveTab();
+  checkAuthSession();
 
   // Button Event Listeners
   document.getElementById('btn-refresh-detection').addEventListener('click', detectActiveTab);
-  document.getElementById('btn-analyze-video').addEventListener('click', analyzeCurrentVideo);
+  document.getElementById('btn-analyze-video').addEventListener('click', () => analyzeCurrentVideo(true));
   document.getElementById('btn-clear-vocab').addEventListener('click', clearVocabDeck);
   document.getElementById('btn-play-pause').addEventListener('click', togglePlayback);
   document.getElementById('btn-submit-answer').addEventListener('click', checkQuizAnswer);
@@ -31,13 +77,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'YOUTUBE_TAB_UPDATED') {
-      detectActiveTab();
+      if (localStorage.getItem('ext_logged_in_user') === 'chinese_learner') {
+        detectActiveTab();
+      }
     }
   });
-
-  // Load vocabulary deck initially
-  loadVocabDeck();
 });
+
+// Enforce login state view transition
+function checkAuthSession() {
+  const loggedInUser = localStorage.getItem('ext_logged_in_user');
+  const viewLogin = document.getElementById('view-login');
+  const viewMain = document.getElementById('view-main');
+
+  if (!viewLogin || !viewMain) return;
+
+  if (loggedInUser === 'chinese_learner') {
+    viewLogin.classList.add('hidden');
+    viewMain.classList.remove('hidden');
+    document.getElementById('ext-logged-in-user-label').textContent = loggedInUser;
+    
+    const select = document.getElementById('ext-user-select');
+    if (select) select.value = "2";
+    
+    detectActiveTab();
+    loadVocabDeck();
+  } else {
+    viewLogin.classList.remove('hidden');
+    viewMain.classList.add('hidden');
+  }
+}
 
 // Setup Tab Navigation
 function setupTabs() {
@@ -66,20 +135,44 @@ function setupTabs() {
 async function checkBackendConnection() {
   const dot = document.getElementById('connection-status-dot');
   const text = document.getElementById('connection-status-text');
+  const select = document.getElementById('ext-user-select');
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/profile?user_id=2`);
-    if (res.ok) {
+    // 1. Fetch users list
+    const usersRes = await fetch(`${BACKEND_URL}/api/users`);
+    if (usersRes.ok) {
+      const allUsers = await usersRes.json();
+      if (select) {
+        select.innerHTML = '';
+        allUsers.forEach(u => {
+          const option = document.createElement("option");
+          option.value = u.user_id;
+          option.textContent = `${u.username} (${u.target_language})`;
+          select.appendChild(option);
+        });
+
+        // 2. Select saved or default profile (defaulting to 2: chinese_learner)
+        const savedUserId = localStorage.getItem('ext_selected_user_id') || "2";
+        if (allUsers.some(u => u.user_id.toString() === savedUserId)) {
+          select.value = savedUserId;
+        } else if (allUsers.length > 0) {
+          const defaultUser = allUsers.find(u => u.username === 'chinese_learner') || allUsers[0];
+          select.value = defaultUser.user_id;
+        }
+      }
+      
       connectionActive = true;
-      dot.className = 'dot connected';
-      text.textContent = 'Connected to server';
+      if (dot) dot.className = 'dot connected';
+      if (text) text.textContent = 'Connected to server';
+      loadVocabDeck();
     } else {
       throw new Error();
     }
   } catch (err) {
     connectionActive = false;
-    dot.className = 'dot disconnected';
-    text.textContent = 'Offline (Start backend)';
+    if (dot) dot.className = 'dot disconnected';
+    if (text) text.textContent = 'Offline (Start backend)';
+    if (select) select.innerHTML = '<option value="2">chinese_learner (Offline)</option>';
   }
 }
 
@@ -88,6 +181,10 @@ async function detectActiveTab() {
   const loading = document.getElementById('youtube-loading');
   const inactive = document.getElementById('youtube-inactive');
   const active = document.getElementById('youtube-active');
+
+  if (localStorage.getItem('ext_logged_in_user') !== 'chinese_learner') {
+    return; // Don't do detection if not logged in
+  }
 
   loading.classList.remove('hidden');
   inactive.classList.add('hidden');
@@ -126,6 +223,11 @@ async function detectActiveTab() {
       active.classList.remove('hidden');
 
       startPlaybackPolling(tab.id);
+
+      // Auto-save: Trigger automatic AI analysis and DB entry on detection
+      if (response.videoId !== analyzedVideoId && response.videoId !== currentlyAnalyzingVideoId) {
+        analyzeCurrentVideo(false);
+      }
     };
 
     chrome.tabs.sendMessage(tab.id, { type: 'GET_PLAYER_STATUS' }, (response) => {
@@ -269,9 +371,9 @@ function getCurrentVideoStatus() {
 }
 
 // Analyze Current YouTube Video
-async function analyzeCurrentVideo() {
+async function analyzeCurrentVideo(isManual = false) {
   if (!connectionActive) {
-    alert("Backend is offline. Please launch the FastAPI server first.");
+    if (isManual) alert("Backend is offline. Please launch the FastAPI server first.");
     return;
   }
 
@@ -285,24 +387,29 @@ async function analyzeCurrentVideo() {
     }
     activeVideoId = current.videoId;
     activeVideoTitle = current.title;
-    document.getElementById('detected-video-title').textContent = activeVideoTitle;
+    const titleEl = document.getElementById('detected-video-title');
+    if (titleEl) titleEl.textContent = activeVideoTitle;
   }
 
   if (!activeVideoId) {
-    alert("No active YouTube video detected. Open a YouTube watch page and try again.");
+    if (isManual) alert("No active YouTube video detected. Open a YouTube watch page and try again.");
     return;
   }
+
+  // Prevent duplicate concurrent requests
+  if (currentlyAnalyzingVideoId === activeVideoId) return;
+  currentlyAnalyzingVideoId = activeVideoId;
 
   const videoId = activeVideoId;
   const title = activeVideoTitle;
 
   const btn = document.getElementById('btn-analyze-video');
-  const btnText = btn.querySelector('.btn-text');
-  const btnLoading = btn.querySelector('.btn-loading');
+  const btnText = btn ? btn.querySelector('.btn-text') : null;
+  const btnLoading = btn ? btn.querySelector('.btn-loading') : null;
 
-  btn.disabled = true;
-  btnText.classList.add('hidden');
-  btnLoading.classList.remove('hidden');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.classList.add('hidden');
+  if (btnLoading) btnLoading.classList.remove('hidden');
 
   try {
     const res = await fetch(`${BACKEND_URL}/api/youtube/analyze`, {
@@ -328,11 +435,14 @@ async function analyzeCurrentVideo() {
     analyzedVideoId = videoId;
   } catch (err) {
     console.error(err);
-    alert(err.message || "Error transcribing and analyzing the YouTube video. Please try again.");
+    if (isManual) {
+      alert(err.message || "Error transcribing and analyzing the YouTube video. Please try again.");
+    }
   } finally {
-    btn.disabled = false;
-    btnText.classList.remove('hidden');
-    btnLoading.classList.add('hidden');
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.classList.remove('hidden');
+    if (btnLoading) btnLoading.classList.add('hidden');
+    currentlyAnalyzingVideoId = null;
   }
 }
 
@@ -493,7 +603,7 @@ async function toggleStarWord(starBtn) {
   if (starBtn.classList.contains('starred')) {
     // Delete
     try {
-      const res = await fetch(`${BACKEND_URL}/api/vocab/${encodeURIComponent(word)}`, {
+      const res = await fetch(`${BACKEND_URL}/api/vocab/${encodeURIComponent(word)}?user_id=${getSelectedUserId()}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -514,7 +624,7 @@ async function toggleStarWord(starBtn) {
           translation: translation,
           context: context,
           pinyin: pinyin,
-          user_id: 2
+          user_id: getSelectedUserId()
         })
       });
       if (res.ok) {
@@ -532,7 +642,7 @@ async function loadVocabDeck() {
   if (!connectionActive) return;
 
   try {
-    const res = await fetch(`${BACKEND_URL}/api/vocab?user_id=2`);
+    const res = await fetch(`${BACKEND_URL}/api/vocab?user_id=${getSelectedUserId()}`);
     if (!res.ok) return;
 
     const data = await res.json();
@@ -563,7 +673,7 @@ async function loadVocabDeck() {
 
       row.querySelector('.btn-delete-vocab').addEventListener('click', async (e) => {
         const wordToDelete = e.target.getAttribute('data-word');
-        await fetch(`${BACKEND_URL}/api/vocab/${encodeURIComponent(wordToDelete)}`, { method: 'DELETE' });
+        await fetch(`${BACKEND_URL}/api/vocab/${encodeURIComponent(wordToDelete)}?user_id=${getSelectedUserId()}`, { method: 'DELETE' });
         loadVocabDeck();
         
         // Remove active class star back in dictionary list if visible
@@ -582,12 +692,10 @@ async function loadVocabDeck() {
 async function clearVocabDeck() {
   if (!confirm("Are you sure you want to clear your study flashcard deck?")) return;
   try {
-    await fetch(`${BACKEND_URL}/api/vocab/reset`, { method: 'POST' }); // Handled on backend reset or delete all
-    // Or call a delete/reset loop
-    const res = await fetch(`${BACKEND_URL}/api/vocab?user_id=2`);
+    const res = await fetch(`${BACKEND_URL}/api/vocab?user_id=${getSelectedUserId()}`);
     const data = await res.json();
     for (let item of data.deck) {
-      await fetch(`${BACKEND_URL}/api/vocab/${encodeURIComponent(item.word)}`, { method: 'DELETE' });
+      await fetch(`${BACKEND_URL}/api/vocab/${encodeURIComponent(item.word)}?user_id=${getSelectedUserId()}`, { method: 'DELETE' });
     }
     loadVocabDeck();
     document.querySelectorAll('.btn-star').forEach(star => star.classList.remove('starred'));
@@ -707,7 +815,7 @@ async function checkQuizAnswer() {
         translation: q.correctAnswer,
         context: q.sentence,
         pinyin: q.pinyin,
-        user_id: 2
+        user_id: getSelectedUserId()
       })
     });
     loadVocabDeck();

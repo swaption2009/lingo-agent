@@ -2,6 +2,8 @@ import os
 import sqlite3
 import google.auth
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google.adk.cli.fast_api import get_fast_api_app
@@ -144,6 +146,430 @@ def api_delete_vocab(word: str, user_id: int = 2):
     """Deletes a vocabulary word."""
     from mcp_server import delete_vocabulary_word
     return delete_vocabulary_word(word, user_id)
+
+
+# --- ADDITIONAL CRUD ENDPOINTS FOR DASHBOARD ---
+
+class UserCreateRequest(BaseModel):
+    username: str
+    target_language: str
+    skill_level: str
+
+class UserUpdateRequest(BaseModel):
+    username: str
+    target_language: str
+    skill_level: str
+
+class MediaCreateUpdateRequest(BaseModel):
+    title: str
+    artist_or_movie: str
+    media_type: str
+    language: str
+    difficulty: str
+    original_text: str
+    translated_text: str
+    pinyin_text: str = None
+    video_id: str = None
+    dictionary_json: str = None
+    tutorial: str = None
+    source: str = None
+
+class VocabManualAddRequest(BaseModel):
+    user_id: int
+    word: str
+    translation: str
+    context_sentence: str
+    pinyin: str = None
+    box_number: int = 1
+    next_review_date: str = None
+
+class VocabUpdateRequest(BaseModel):
+    word: str
+    translation: str
+    context_sentence: str
+    pinyin: str = None
+    box_number: int = 1
+    next_review_date: str = None
+
+class QuizHistoryCreateRequest(BaseModel):
+    user_id: int
+    content_id: int
+    score: int
+    total_questions: int
+    notes: str = ""
+    date_taken: str = None
+
+class QuizHistoryUpdateRequest(BaseModel):
+    notes: str
+    score: int = None
+    total_questions: int = None
+
+
+# User CRUD Endpoints
+
+@app.get("/api/users")
+def api_get_users():
+    """Retrieves all user profiles."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, username, target_language, skill_level FROM users")
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        {
+            "user_id": r[0],
+            "username": r[1],
+            "target_language": r[2],
+            "skill_level": r[3]
+        } for r in rows
+    ]
+
+@app.post("/api/users")
+def api_create_user(req: UserCreateRequest):
+    """Creates a new user profile."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO users (username, target_language, skill_level) VALUES (?, ?, ?)",
+        (req.username, req.target_language, req.skill_level)
+    )
+    user_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {
+        "user_id": user_id,
+        "username": req.username,
+        "target_language": req.target_language,
+        "skill_level": req.skill_level
+    }
+
+@app.put("/api/users/{user_id}")
+def api_update_user(user_id: int, req: UserUpdateRequest):
+    """Updates a user profile."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET username = ?, target_language = ?, skill_level = ? WHERE user_id = ?",
+        (req.username, req.target_language, req.skill_level, user_id)
+    )
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    conn.commit()
+    conn.close()
+    return {
+        "user_id": user_id,
+        "username": req.username,
+        "target_language": req.target_language,
+        "skill_level": req.skill_level
+    }
+
+@app.delete("/api/users/{user_id}")
+def api_delete_user(user_id: int):
+    """Deletes a user profile and cleans up their vocabulary deck and quiz history."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # Delete quiz history
+    cursor.execute("DELETE FROM quiz_history WHERE user_id = ?", (user_id,))
+    # Delete vocab deck
+    cursor.execute("DELETE FROM vocabulary_deck WHERE user_id = ?", (user_id,))
+    # Delete user
+    cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"User {user_id} and all their study data deleted."}
+
+
+# Media Content CRUD Endpoints
+
+@app.get("/api/media")
+def api_get_all_media():
+    """Retrieves all media content items."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT content_id, title, artist_or_movie, media_type, language, difficulty, video_id 
+        FROM media_content
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        {
+            "content_id": r[0],
+            "title": r[1],
+            "artist_or_movie": r[2],
+            "media_type": r[3],
+            "language": r[4],
+            "difficulty": r[5],
+            "video_id": r[6]
+        } for r in rows
+    ]
+
+@app.get("/api/media/{content_id}")
+def api_get_media_detail(content_id: int):
+    """Retrieves detailed media content by ID."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT content_id, title, artist_or_movie, media_type, language, difficulty, 
+               original_text, translated_text, pinyin_text, video_id, dictionary_json, tutorial, source
+        FROM media_content WHERE content_id = ?
+    """, (content_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Media content not found")
+    return {
+        "content_id": row[0],
+        "title": row[1],
+        "artist_or_movie": row[2],
+        "media_type": row[3],
+        "language": row[4],
+        "difficulty": row[5],
+        "original_text": row[6],
+        "translated_text": row[7],
+        "pinyin_text": row[8],
+        "video_id": row[9],
+        "dictionary_json": row[10],
+        "tutorial": row[11],
+        "source": row[12]
+    }
+
+@app.post("/api/media")
+def api_create_media(req: MediaCreateUpdateRequest):
+    """Creates new media content."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO media_content (title, artist_or_movie, media_type, language, difficulty, 
+                                   original_text, translated_text, pinyin_text, video_id, dictionary_json, tutorial, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        req.title, req.artist_or_movie, req.media_type, req.language, req.difficulty,
+        req.original_text, req.translated_text, req.pinyin_text, req.video_id,
+        req.dictionary_json, req.tutorial, req.source
+    ))
+    content_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {"content_id": content_id, **req.model_dump()}
+
+@app.put("/api/media/{content_id}")
+def api_update_media(content_id: int, req: MediaCreateUpdateRequest):
+    """Updates existing media content."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE media_content 
+        SET title = ?, artist_or_movie = ?, media_type = ?, language = ?, difficulty = ?, 
+            original_text = ?, translated_text = ?, pinyin_text = ?, video_id = ?, 
+            dictionary_json = ?, tutorial = ?, source = ?
+        WHERE content_id = ?
+    """, (
+        req.title, req.artist_or_movie, req.media_type, req.language, req.difficulty,
+        req.original_text, req.translated_text, req.pinyin_text, req.video_id,
+        req.dictionary_json, req.tutorial, req.source, content_id
+    ))
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Media content not found")
+    conn.commit()
+    conn.close()
+    return {"content_id": content_id, **req.model_dump()}
+
+@app.delete("/api/media/{content_id}")
+def api_delete_media(content_id: int):
+    """Deletes media content from the database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM media_content WHERE content_id = ?", (content_id,))
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Media content not found")
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Media content {content_id} deleted."}
+
+
+# Vocabulary Deck Additional CRUD Endpoints
+
+@app.post("/api/vocab/manual")
+def api_add_vocab_manual(req: VocabManualAddRequest):
+    """Manually adds a vocabulary card with customizable spaced repetition properties."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Check if word already exists in deck for this user
+    cursor.execute("SELECT vocab_id FROM vocabulary_deck WHERE user_id = ? AND word = ?", (req.user_id, req.word))
+    existing = cursor.fetchone()
+    
+    import datetime
+    next_review = req.next_review_date or (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
+    
+    if existing:
+        cursor.execute("""
+            UPDATE vocabulary_deck 
+            SET translation = ?, context_sentence = ?, pinyin = ?, box_number = ?, next_review_date = ?
+            WHERE vocab_id = ?
+        """, (req.translation, req.context_sentence, req.pinyin, req.box_number, next_review, existing[0]))
+        vocab_id = existing[0]
+        status = "updated"
+    else:
+        cursor.execute("""
+            INSERT INTO vocabulary_deck (user_id, word, translation, context_sentence, pinyin, box_number, next_review_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (req.user_id, req.word, req.translation, req.context_sentence, req.pinyin, req.box_number, next_review))
+        vocab_id = cursor.lastrowid
+        status = "created"
+        
+    conn.commit()
+    conn.close()
+    return {
+        "status": "success",
+        "action": status,
+        "vocab_id": vocab_id,
+        "user_id": req.user_id,
+        "word": req.word,
+        "translation": req.translation,
+        "context_sentence": req.context_sentence,
+        "pinyin": req.pinyin,
+        "box_number": req.box_number,
+        "next_review_date": next_review
+    }
+
+@app.put("/api/vocab/id/{vocab_id}")
+def api_update_vocab_by_id(vocab_id: int, req: VocabUpdateRequest):
+    """Updates a specific vocabulary card properties by ID."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE vocabulary_deck 
+        SET word = ?, translation = ?, context_sentence = ?, pinyin = ?, box_number = ?, next_review_date = ?
+        WHERE vocab_id = ?
+    """, (req.word, req.translation, req.context_sentence, req.pinyin, req.box_number, req.next_review_date, vocab_id))
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Vocabulary card not found")
+    conn.commit()
+    conn.close()
+    return {"vocab_id": vocab_id, **req.model_dump()}
+
+@app.delete("/api/vocab/id/{vocab_id}")
+def api_delete_vocab_by_id(vocab_id: int):
+    """Deletes a vocabulary card by ID."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM vocabulary_deck WHERE vocab_id = ?", (vocab_id,))
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Vocabulary card not found")
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Vocabulary card {vocab_id} deleted."}
+
+
+# Quiz History CRUD Endpoints
+
+@app.get("/api/quiz_history")
+def api_get_quiz_history(user_id: int = 2):
+    """Retrieves quiz history logs for a user, including media title."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT q.quiz_id, q.user_id, q.content_id, m.title, q.score, q.total_questions, q.notes, q.date_taken
+        FROM quiz_history q
+        JOIN media_content m ON q.content_id = m.content_id
+        WHERE q.user_id = ?
+        ORDER BY q.date_taken DESC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        {
+            "quiz_id": r[0],
+            "user_id": r[1],
+            "content_id": r[2],
+            "media_title": r[3],
+            "score": r[4],
+            "total_questions": r[5],
+            "notes": r[6],
+            "date_taken": r[7]
+        } for r in rows
+    ]
+
+@app.post("/api/quiz_history")
+def api_create_quiz_history(req: QuizHistoryCreateRequest):
+    """Logs a new quiz result."""
+    import datetime
+    date_taken = req.date_taken or datetime.datetime.now().isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO quiz_history (user_id, content_id, score, total_questions, notes, date_taken)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (req.user_id, req.content_id, req.score, req.total_questions, req.notes, date_taken))
+    quiz_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {
+        "quiz_id": quiz_id,
+        "user_id": req.user_id,
+        "content_id": req.content_id,
+        "score": req.score,
+        "total_questions": req.total_questions,
+        "notes": req.notes,
+        "date_taken": date_taken
+    }
+
+@app.put("/api/quiz_history/{quiz_id}")
+def api_update_quiz_history(quiz_id: int, req: QuizHistoryUpdateRequest):
+    """Updates a quiz history record (e.g. notes)."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    if req.score is not None and req.total_questions is not None:
+        cursor.execute("""
+            UPDATE quiz_history SET notes = ?, score = ?, total_questions = ? WHERE quiz_id = ?
+        """, (req.notes, req.score, req.total_questions, quiz_id))
+    else:
+        cursor.execute("""
+            UPDATE quiz_history SET notes = ? WHERE quiz_id = ?
+        """, (req.notes, quiz_id))
+        
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Quiz history record not found")
+    conn.commit()
+    conn.close()
+    return {"quiz_id": quiz_id, "status": "success", "notes": req.notes}
+
+@app.delete("/api/quiz_history/{quiz_id}")
+def api_delete_quiz_history(quiz_id: int):
+    """Deletes a quiz history record."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM quiz_history WHERE quiz_id = ?", (quiz_id,))
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Quiz history record not found")
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Quiz history record {quiz_id} deleted."}
+
+
+# Serve Frontend Static HTML
+@app.get("/dashboard", response_class=HTMLResponse)
+def read_index():
+    try:
+        with open("app/frontend/index.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Dashboard Frontend File Not Found</h1><p>Ensure the app/frontend/index.html file exists.</p>")
+
+# Mount static files
+app.mount("/dashboard-assets", StaticFiles(directory="app/frontend"), name="dashboard-assets")
 
 
 # Main execution

@@ -11,145 +11,178 @@
 </head>
 <body>
   <div class="glass-container">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="logo">
-        <span class="logo-glow">LINGO</span> <span class="sub-logo">KARAOKE</span>
+    <!-- Login View -->
+    <div id="view-login" class="auth-container">
+      <div class="auth-card">
+        <div class="logo" style="text-align: center; margin-bottom: 12px; font-family: 'Orbitron', sans-serif; font-size: 1.5rem; letter-spacing: 2px;">
+          <span class="logo-glow">LINGO</span> <span class="sub-logo">KARAOKE</span>
+        </div>
+        <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 20px;">
+          Login to sync your study deck and auto-save lyrics.
+        </p>
+        <form id="form-login">
+          <div style="margin-bottom: 16px; text-align: left;">
+            <label for="login-username" style="display: block; font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px; font-weight: 600;">Username</label>
+            <input type="text" id="login-username" placeholder="Enter username (e.g. chinese_learner)" style="width: 100%; padding: 10px 12px; background: rgba(10, 10, 15, 0.8); border: 1px solid var(--bg-glass-border); border-radius: 8px; color: #fff; font-family: inherit; font-size: 0.85rem; outline: none;" required>
+            <div id="login-error" style="color: var(--error); font-size: 0.75rem; margin-top: 6px;" class="hidden"></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-glow" style="margin-top: 8px;">Login</button>
+        </form>
       </div>
-      <div class="status-indicator">
-        <span id="connection-status-dot" class="dot disconnected"></span>
-        <span id="connection-status-text">Disconnected from server</span>
-      </div>
-    </header>
+    </div>
 
-    <!-- YouTube Detector Panel -->
-    <section id="youtube-detector" class="detector-panel">
-      <div id="youtube-loading" class="panel-state">
-        <div class="spinner"></div>
-        <p>Checking active YouTube tab...</p>
-      </div>
-      
-      <div id="youtube-inactive" class="panel-state hidden">
-        <div class="icon-warning">⚠️</div>
-        <h3>No YouTube Video Detected</h3>
-        <p>Please open a YouTube watch page (e.g., a Chinese karaoke song) to begin learning.</p>
-        <button id="btn-refresh-detection" class="btn btn-secondary">Detect Active Tab</button>
-      </div>
-      
-      <div id="youtube-active" class="panel-state hidden">
-        <div class="video-info-card">
-          <div class="music-icon">🎵</div>
-          <div class="video-meta">
-            <h4 id="detected-video-title">Teresa Teng - Tian Mi Mi</h4>
-            <p id="detected-video-channel">YouTube Video</p>
+    <!-- Main View (Hidden by default until logged in) -->
+    <div id="view-main" class="hidden" style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden;">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="logo">
+          <span class="logo-glow">LINGO</span> <span class="sub-logo">KARAOKE</span>
+        </div>
+        <div class="status-indicator">
+          <span id="connection-status-dot" class="dot disconnected"></span>
+          <span id="connection-status-text">Disconnected from server</span>
+          <div style="margin-top: 6px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; width: 100%;">
+            <span style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Profile:</span>
+            <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600;" id="ext-logged-in-user-label">chinese_learner</span>
+            <button id="btn-ext-logout" style="background: rgba(255, 255, 255, 0.08); border: 1px solid var(--bg-glass-border); border-radius: 4px; color: var(--text-primary); font-size: 0.7rem; padding: 2px 6px; cursor: pointer; font-family: inherit; transition: var(--transition);">Logout 🚪</button>
+            
+            <!-- Kept for JS compatibility (hidden from view) -->
+            <select id="ext-user-select" style="display: none;">
+              <option value="2">chinese_learner</option>
+            </select>
           </div>
         </div>
-        <button id="btn-analyze-video" class="btn btn-primary btn-glow">
-          <span class="btn-text">Analyze with AI</span>
-          <span class="btn-loading hidden"><span class="spinner-small"></span> Parsing...</span>
-        </button>
-      </div>
-    </section>
+      </header>
 
-    <!-- Main Navigation Tabs -->
-    <nav class="app-nav">
-      <button class="nav-tab active" data-tab="lyrics">🎤 Lyrics</button>
-      <button class="nav-tab" data-tab="dictionary">📚 Dict</button>
-      <button class="nav-tab" data-tab="quiz">🧠 Quiz</button>
-      <button class="nav-tab" data-tab="vocab">📇 Vocab</button>
-    </nav>
-
-    <!-- Main Content Area -->
-    <main class="app-content">
-      <!-- Tab 1: Lyrics Reader -->
-      <div id="tab-lyrics" class="tab-panel active">
-        <div class="lyrics-container">
-          <div id="lyrics-source-notice" class="source-notice hidden"></div>
-          <div id="lyrics-placeholder" class="placeholder-state">
-            <p>Analyze a Chinese video to load synchronized pinyin and translations.</p>
-          </div>
-          <div id="lyrics-list" class="lyrics-list hidden">
-            <!-- Lyrics lines will be injected here -->
-          </div>
+      <!-- YouTube Detector Panel -->
+      <section id="youtube-detector" class="detector-panel">
+        <div id="youtube-loading" class="panel-state">
+          <div class="spinner"></div>
+          <p>Checking active YouTube tab...</p>
         </div>
-        <!-- Simple Player Controls -->
-        <div id="player-controls" class="player-controls hidden">
-          <button id="btn-play-pause" class="btn-ctrl">⏸️</button>
-          <span id="player-time">00:00 / 00:00</span>
+        
+        <div id="youtube-inactive" class="panel-state hidden">
+          <div class="icon-warning">⚠️</div>
+          <h3>No YouTube Video Detected</h3>
+          <p>Please open a YouTube watch page (e.g., a Chinese karaoke song) to begin learning.</p>
+          <button id="btn-refresh-detection" class="btn btn-secondary">Detect Active Tab</button>
         </div>
-      </div>
-
-      <!-- Tab 2: Dictionary Breakdown -->
-      <div id="tab-dictionary" class="tab-panel">
-        <div class="dictionary-container">
-          <div id="dictionary-placeholder" class="placeholder-state">
-            <p>Vocabulary analysis will appear here after video is analyzed.</p>
-          </div>
-          <div id="dictionary-content" class="dictionary-content hidden">
-            <div class="tutorial-card">
-              <h3>Grammar Tutorial</h3>
-              <p id="grammar-tutorial-text">No tutorial generated yet.</p>
-            </div>
-            <h3>Vocabulary in this Video</h3>
-            <div id="vocab-cards-list" class="vocab-cards-list">
-              <!-- Vocab cards injected here -->
+        
+        <div id="youtube-active" class="panel-state hidden">
+          <div class="video-info-card">
+            <div class="music-icon">🎵</div>
+            <div class="video-meta">
+              <h4 id="detected-video-title">Teresa Teng - Tian Mi Mi</h4>
+              <p id="detected-video-channel">YouTube Video</p>
             </div>
           </div>
+          <button id="btn-analyze-video" class="btn btn-primary btn-glow">
+            <span class="btn-text">Analyze with AI</span>
+            <span class="btn-loading hidden"><span class="spinner-small"></span> Parsing...</span>
+          </button>
         </div>
-      </div>
+      </section>
 
-      <!-- Tab 3: Interactive Practice / Quiz -->
-      <div id="tab-quiz" class="tab-panel">
-        <div class="quiz-container">
-          <div id="quiz-placeholder" class="placeholder-state">
-            <p>Analyze a video first to practice grammar and vocabulary.</p>
+      <!-- Main Navigation Tabs -->
+      <nav class="app-nav">
+        <button class="nav-tab active" data-tab="lyrics">🎤 Lyrics</button>
+        <button class="nav-tab" data-tab="dictionary">📚 Dict</button>
+        <button class="nav-tab" data-tab="quiz">🧠 Quiz</button>
+        <button class="nav-tab" data-tab="vocab">📇 Vocab</button>
+      </nav>
+
+      <!-- Main Content Area -->
+      <main class="app-content">
+        <!-- Tab 1: Lyrics Reader -->
+        <div id="tab-lyrics" class="tab-panel active">
+          <div class="lyrics-container">
+            <div id="lyrics-source-notice" class="source-notice hidden"></div>
+            <div id="lyrics-placeholder" class="placeholder-state">
+              <p>Analyze a Chinese video to load synchronized pinyin and translations.</p>
+            </div>
+            <div id="lyrics-list" class="lyrics-list hidden">
+              <!-- Lyrics lines will be injected here -->
+            </div>
           </div>
-          
-          <div id="quiz-content" class="quiz-content hidden">
-            <div class="quiz-card">
-              <div class="quiz-header">
-                <span class="quiz-badge">Interactive Practice</span>
-                <span id="quiz-question-number">Question 1/3</span>
-              </div>
-              <h3 id="quiz-prompt">Translate the following word:</h3>
-              <div id="quiz-question-context" class="quiz-context-sentence">
-                <!-- E.g., "Para bailar la bamba" -->
-              </div>
-              
-              <!-- Quiz options/input -->
-              <div id="quiz-body">
-                <!-- Injected choice buttons or input field -->
-              </div>
+          <!-- Simple Player Controls -->
+          <div id="player-controls" class="player-controls hidden">
+            <button id="btn-play-pause" class="btn-ctrl">⏸️</button>
+            <span id="player-time">00:00 / 00:00</span>
+          </div>
+        </div>
 
-              <div id="quiz-feedback" class="quiz-feedback-box hidden">
-                <!-- Correct/incorrect feedback -->
+        <!-- Tab 2: Dictionary Breakdown -->
+        <div id="tab-dictionary" class="tab-panel">
+          <div class="dictionary-container">
+            <div id="dictionary-placeholder" class="placeholder-state">
+              <p>Vocabulary analysis will appear here after video is analyzed.</p>
+            </div>
+            <div id="dictionary-content" class="dictionary-content hidden">
+              <div class="tutorial-card">
+                <h3>Grammar Tutorial</h3>
+                <p id="grammar-tutorial-text">No tutorial generated yet.</p>
               </div>
-              
-              <div class="quiz-actions">
-                <button id="btn-submit-answer" class="btn btn-primary">Check Answer</button>
-                <button id="btn-next-question" class="btn btn-secondary hidden">Next Question</button>
+              <h3>Vocabulary in this Video</h3>
+              <div id="vocab-cards-list" class="vocab-cards-list">
+                <!-- Vocab cards injected here -->
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Tab 4: Vocabulary Flashcard Deck -->
-      <div id="tab-vocab" class="tab-panel">
-        <div class="vocab-container">
-          <div class="vocab-header">
-            <h3>My Study Deck</h3>
-            <button id="btn-clear-vocab" class="btn-clear-all">Reset Deck</button>
-          </div>
-          <div id="vocab-placeholder" class="placeholder-state">
-            <p>Your vocabulary flashcard deck is empty. Hover and star words in the lyrics or pass quizzes to add them!</p>
-          </div>
-          <div id="vocab-list" class="vocab-list hidden">
-            <!-- Flashcards injected here -->
+        <!-- Tab 3: Interactive Practice / Quiz -->
+        <div id="tab-quiz" class="tab-panel">
+          <div class="quiz-container">
+            <div id="quiz-placeholder" class="placeholder-state">
+              <p>Analyze a video first to practice grammar and vocabulary.</p>
+            </div>
+            
+            <div id="quiz-content" class="quiz-content hidden">
+              <div class="quiz-card">
+                <div class="quiz-header">
+                  <span class="quiz-badge">Interactive Practice</span>
+                  <span id="quiz-question-number">Question 1/3</span>
+                </div>
+                <h3 id="quiz-prompt">Translate the following word:</h3>
+                <div id="quiz-question-context" class="quiz-context-sentence">
+                  <!-- E.g., "Para bailar la bamba" -->
+                </div>
+                
+                <!-- Quiz options/input -->
+                <div id="quiz-body">
+                  <!-- Injected choice buttons or input field -->
+                </div>
+
+                <div id="quiz-feedback" class="quiz-feedback-box hidden">
+                  <!-- Correct/incorrect feedback -->
+                </div>
+                
+                <div class="quiz-actions">
+                  <button id="btn-submit-answer" class="btn btn-primary">Check Answer</button>
+                  <button id="btn-next-question" class="btn btn-secondary hidden">Next Question</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+
+        <!-- Tab 4: Vocabulary Flashcard Deck -->
+        <div id="tab-vocab" class="tab-panel">
+          <div class="vocab-container">
+            <div class="vocab-header">
+              <h3>My Study Deck</h3>
+              <button id="btn-clear-vocab" class="btn-clear-all">Reset Deck</button>
+            </div>
+            <div id="vocab-placeholder" class="placeholder-state">
+              <p>Your vocabulary flashcard deck is empty. Hover and star words in the lyrics or pass quizzes to add them!</p>
+            </div>
+            <div id="vocab-list" class="vocab-list hidden">
+              <!-- Flashcards injected here -->
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   </div>
 </body>
 </html>

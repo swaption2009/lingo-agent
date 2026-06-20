@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lingo Karaoke - Creator & Study Dashboard</title>
+  <!-- Outfit and Orbitron Google Fonts for premium tech look -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/dashboard-assets/style.css">
+  <script src="/dashboard-assets/app.js" defer></script>
+</head>
+<body class="dark-theme">
+  <!-- Neon Background Elements -->
+  <div class="neon-bg-glow glow-top-left"></div>
+  <div class="neon-bg-glow glow-bottom-right"></div>
+
+  <!-- MAIN APP WRAPPER -->
+  <div id="app" class="app-wrapper">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="logo-container">
+        <span class="logo-glow">LINGO</span>
+        <span class="logo-sub">DASHBOARD</span>
+      </div>
+      <div class="header-right hidden" id="header-user-badge">
+        <div class="user-pill">
+          <span class="avatar-icon">👤</span>
+          <span id="current-user-name">Guest</span>
+          <span class="lang-badge" id="current-user-lang">Chinese</span>
+        </div>
+        <button id="btn-logout" class="btn btn-logout-icon" title="Logout">Logout 🚪</button>
+      </div>
+    </header>
+
+    <!-- VIEW 1: AUTHENTICATION (LOGIN / REGISTER) -->
+    <main id="view-auth" class="auth-container">
+      <div class="auth-card glass-panel">
+        <h2 class="auth-title">Welcome to Lingo Studio</h2>
+        <p class="auth-subtitle">Select an existing profile or launch a new study session</p>
+        
+        <!-- Tab selector inside auth -->
+        <div class="auth-tabs">
+          <button id="tab-btn-login" class="auth-tab-btn active">Select Profile</button>
+          <button id="tab-btn-register" class="auth-tab-btn">New Profile</button>
+        </div>
+
+        <!-- Section A: Select Profile -->
+        <div id="auth-section-login" class="auth-section">
+          <form id="form-login">
+            <div class="form-group">
+              <label for="login-user-select">Choose Active User Profile</label>
+              <select id="login-user-select" class="form-input" required>
+                <option value="" disabled selected>Loading profiles...</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-glow btn-full" id="btn-submit-login">
+              Launch Dashboard
+            </button>
+          </form>
+        </div>
+
+        <!-- Section B: Create New Profile -->
+        <div id="auth-section-register" class="auth-section hidden">
+          <form id="form-register">
+            <div class="form-group">
+              <label for="reg-username">Username</label>
+              <input type="text" id="reg-username" class="form-input" placeholder="e.g. polyglot_explorer" required>
+            </div>
+            <div class="form-group">
+              <label for="reg-target-lang">Target Language</label>
+              <select id="reg-target-lang" class="form-input" required>
+                <option value="Chinese">Chinese</option>
+                <option value="Spanish">Spanish</option>
+                <option value="German">German</option>
+                <option value="Japanese">Japanese</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="reg-skill-level">Skill Level</label>
+              <select id="reg-skill-level" class="form-input" required>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-glow btn-full" id="btn-submit-register">
+              Create & Login
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <!-- VIEW 2: DASHBOARD PANEL (HIDDEN BY DEFAULT) -->
+    <main id="view-dashboard" class="dashboard-container hidden">
+      <!-- SIDEBAR -->
+      <aside class="dashboard-sidebar glass-panel">
+        <nav class="sidebar-nav">
+          <button class="side-tab active" data-tab="stats" id="side-tab-stats">
+            <span class="tab-icon">📊</span> <span class="tab-label">Profile & Stats</span>
+          </button>
+          <button class="side-tab" data-tab="media" id="side-tab-media">
+            <span class="tab-icon">🎤</span> <span class="tab-label">Lyrics Manager</span>
+          </button>
+          <button class="side-tab" data-tab="vocab" id="side-tab-vocab">
+            <span class="tab-icon">📇</span> <span class="tab-label">Study Deck</span>
+          </button>
+          <button class="side-tab" data-tab="practice" id="side-tab-practice">
+            <span class="tab-icon">🧠</span> <span class="tab-label">Practice Player</span>
+          </button>
+          <button class="side-tab" data-tab="history" id="side-tab-history">
+            <span class="tab-icon">📜</span> <span class="tab-label">Quiz History</span>
+          </button>
+        </nav>
+      </aside>
+
+      <!-- MAIN CONTENT PANEL -->
+      <section class="dashboard-main-content">
+        
+        <!-- Tab 1: Stats & Profile -->
+        <div id="pane-stats" class="pane active">
+          <div class="profile-card glass-panel header-highlight">
+            <div class="profile-details-flex">
+              <div>
+                <h2 id="stats-username">chinese_learner</h2>
+                <p class="profile-meta">Targeting <strong id="stats-lang">Chinese</strong> • Level: <strong id="stats-level" class="badge">beginner</strong></p>
+              </div>
+              <div class="profile-actions-inline">
+                <button id="btn-edit-profile" class="btn btn-secondary">Edit Profile</button>
+                <button id="btn-delete-profile" class="btn btn-danger">Delete Profile</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Edit Fields (Collapsible/Hidden by default) -->
+          <div id="profile-edit-box" class="profile-edit-box glass-panel hidden">
+            <h3>Update Profile</h3>
+            <form id="form-edit-profile" class="form-grid-3">
+              <div class="form-group">
+                <label for="edit-username">Username</label>
+                <input type="text" id="edit-username" class="form-input" required>
+              </div>
+              <div class="form-group">
+                <label for="edit-target-lang">Language</label>
+                <select id="edit-target-lang" class="form-input" required>
+                  <option value="Chinese">Chinese</option>
+                  <option value="Spanish">Spanish</option>
+                  <option value="German">German</option>
+                  <option value="Japanese">Japanese</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="edit-skill-level">Skill Level</label>
+                <select id="edit-skill-level" class="form-input" required>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+              <div class="form-actions-span">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" id="btn-cancel-edit-profile" class="btn btn-secondary">Cancel</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-box glass-panel">
+              <span class="stat-icon">🎤</span>
+              <div class="stat-data">
+                <span class="stat-value" id="stat-total-media">0</span>
+                <span class="stat-title">Media Items</span>
+              </div>
+            </div>
+            <div class="stat-box glass-panel">
+              <span class="stat-icon">📇</span>
+              <div class="stat-data">
+                <span class="stat-value" id="stat-total-vocab">0</span>
+                <span class="stat-title">Vocabulary Words</span>
+              </div>
+            </div>
+            <div class="stat-box glass-panel">
+              <span class="stat-icon">🧠</span>
+              <div class="stat-data">
+                <span class="stat-value" id="stat-total-quizzes">0</span>
+                <span class="stat-title">Quizzes Completed</span>
+              </div>
+            </div>
+            <div class="stat-box glass-panel">
+              <span class="stat-icon">🏆</span>
+              <div class="stat-data">
+                <span class="stat-value" id="stat-avg-score">0%</span>
+                <span class="stat-title">Average Score</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leitner box distribution chart container -->
+          <div class="chart-container glass-panel">
+            <h3>Leitner Spaced-Repetition Deck</h3>
+            <p class="chart-subtitle">Distribution of vocabulary cards across Leitner Boxes (Box 1 to 5)</p>
+            <div class="leitner-bar-chart">
+              <div class="bar-column">
+                <div class="bar-fill box1" style="height: 0%" id="box-bar-1">
+                  <span class="bar-value" id="box-count-1">0</span>
+                </div>
+                <span class="bar-label">Box 1<br>(Daily)</span>
+              </div>
+              <div class="bar-column">
+                <div class="bar-fill box2" style="height: 0%" id="box-bar-2">
+                  <span class="bar-value" id="box-count-2">0</span>
+                </div>
+                <span class="bar-label">Box 2<br>(2 Days)</span>
+              </div>
+              <div class="bar-column">
+                <div class="bar-fill box3" style="height: 0%" id="box-bar-3">
+                  <span class="bar-value" id="box-count-3">0</span>
+                </div>
+                <span class="bar-label">Box 3<br>(Weekly)</span>
+              </div>
+              <div class="bar-column">
+                <div class="bar-fill box4" style="height: 0%" id="box-bar-4">
+                  <span class="bar-value" id="box-count-4">0</span>
+                </div>
+                <span class="bar-label">Box 4<br>(Bi-weekly)</span>
+              </div>
+              <div class="bar-column">
+                <div class="bar-fill box5" style="height: 0%" id="box-bar-5">
+                  <span class="bar-value" id="box-count-5">0</span>
+                </div>
+                <span class="bar-label">Box 5<br>(Monthly)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Lyrics/Media Manager -->
+        <div id="pane-media" class="pane">
+          <div class="pane-header">
+            <div>
+              <h2>Lyrics & Media Manager</h2>
+              <p>Manage learning content, video links, transcripts, pinyin, and dictionaries</p>
+            </div>
+            <button id="btn-add-media" class="btn btn-primary btn-glow">+ Add New Media</button>
+          </div>
+
+          <div class="table-container glass-panel">
+            <table class="data-table" id="table-media">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Artist / Movie</th>
+                  <th>Type</th>
+                  <th>Language</th>
+                  <th>Difficulty</th>
+                  <th>Video ID</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="media-list-rows">
+                <!-- Media records injected here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 3: Vocabulary Study Deck -->
+        <div id="pane-vocab" class="pane">
+          <div class="pane-header">
+            <div>
+              <h2>Vocabulary Study Deck</h2>
+              <p>Flashcards tracked under the Leitner spaced-repetition system</p>
+            </div>
+            <button id="btn-add-vocab" class="btn btn-primary btn-glow">+ Add Flashcard</button>
+          </div>
+
+          <!-- Filters -->
+          <div class="filter-bar glass-panel">
+            <span class="filter-label">Filter Box:</span>
+            <div class="filter-buttons">
+              <button class="filter-btn active" data-box="all">All</button>
+              <button class="filter-btn" data-box="1">Box 1</button>
+              <button class="filter-btn" data-box="2">Box 2</button>
+              <button class="filter-btn" data-box="3">Box 3</button>
+              <button class="filter-btn" data-box="4">Box 4</button>
+              <button class="filter-btn" data-box="5">Box 5</button>
+            </div>
+          </div>
+
+          <div class="vocab-grid-container" id="vocab-deck-cards">
+            <!-- Cards injected here -->
+          </div>
+        </div>
+
+        <!-- Tab 4: Practice Player / Quizzes -->
+        <div id="pane-practice" class="pane">
+          <div class="pane-header">
+            <div>
+              <h2>Practice Player</h2>
+              <p>Generate interactive quizzes based on your lyrics and study cards</p>
+            </div>
+          </div>
+
+          <!-- Selector -->
+          <div id="practice-selector" class="glass-panel text-center">
+            <h3>Choose a Song or Movie Scene to Start</h3>
+            <div class="form-group width-medium-center">
+              <select id="practice-media-select" class="form-input">
+                <option value="" disabled selected>Select Media...</option>
+              </select>
+            </div>
+            <button id="btn-start-practice" class="btn btn-primary btn-glow">Start Practice Session</button>
+          </div>
+
+          <!-- Active Quiz Area -->
+          <div id="practice-active-area" class="practice-active-area glass-panel hidden">
+            <div class="quiz-player-header">
+              <div class="quiz-player-title" id="quiz-media-title">Song Title</div>
+              <div class="quiz-player-status" id="quiz-progress-text">Question 1 of 5</div>
+            </div>
+
+            <div class="quiz-card-body">
+              <div class="quiz-question-container">
+                <div class="quiz-prompt-header">Match or translate:</div>
+                <div class="quiz-question-main" id="quiz-question-prompt">Question Content</div>
+                <div class="quiz-question-helper" id="quiz-question-pinyin">pinyin helper</div>
+                <div class="quiz-question-context-sentence" id="quiz-question-context">Context line here</div>
+              </div>
+
+              <!-- Options -->
+              <div class="quiz-options-container" id="quiz-options">
+                <!-- Dynamic choices or text inputs -->
+              </div>
+
+              <!-- Feedback Box -->
+              <div class="quiz-feedback-box hidden" id="quiz-feedback-banner">
+                <div class="feedback-status" id="quiz-feedback-status">Correct!</div>
+                <div class="feedback-desc" id="quiz-feedback-explanation">Explanation here</div>
+              </div>
+
+              <!-- Controls -->
+              <div class="quiz-footer-actions">
+                <button id="btn-submit-quiz-answer" class="btn btn-primary">Check Answer</button>
+                <button id="btn-next-quiz-question" class="btn btn-secondary hidden">Next Question</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Quiz Results -->
+          <div id="practice-results-area" class="glass-panel text-center hidden">
+            <div class="trophy-icon">🏆</div>
+            <h2>Session Completed!</h2>
+            <p class="results-score-text">You scored <strong id="quiz-results-score">4/5</strong></p>
+            <p>Your results have been automatically recorded in your Study History.</p>
+            
+            <div class="form-group width-medium-center text-left">
+              <label for="quiz-results-notes">Add Session Notes / Study Log</label>
+              <textarea id="quiz-results-notes" class="form-input" rows="3" placeholder="e.g. Struggled with verb forms. Good progress on pronunciation!"></textarea>
+            </div>
+            
+            <div class="results-actions">
+              <button id="btn-save-quiz-notes" class="btn btn-primary">Save Notes & Exit</button>
+              <button id="btn-exit-quiz" class="btn btn-secondary">Exit Session</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Quiz History -->
+        <div id="pane-history" class="pane">
+          <div class="pane-header">
+            <div>
+              <h2>Study & Quiz History Log</h2>
+              <p>Review past study sessions and editing comments</p>
+            </div>
+          </div>
+
+          <div class="table-container glass-panel">
+            <table class="data-table" id="table-history">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Media Title</th>
+                  <th>Score</th>
+                  <th>Accuracy</th>
+                  <th>Notes / Comments</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="history-list-rows">
+                <!-- History logs injected here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+  </div> <!-- /app-wrapper -->
+
+  <!-- ==================== MODAL OVERLAYS ==================== -->
+
+  <!-- 1. ADD/EDIT MEDIA MODAL -->
+  <dialog id="modal-media" class="modal glass-panel">
+    <div class="modal-header">
+      <h3 id="modal-media-title">Add New Media Content</h3>
+      <button class="modal-close-btn" id="btn-close-media-modal">×</button>
+    </div>
+    <form id="form-media">
+      <input type="hidden" id="media-form-id">
+      <div class="modal-body-grid">
+        <div class="form-group">
+          <label for="media-title">Title</label>
+          <input type="text" id="media-title" class="form-input" required placeholder="e.g. 甜蜜蜜">
+        </div>
+        <div class="form-group">
+          <label for="media-artist">Artist or Director</label>
+          <input type="text" id="media-artist" class="form-input" required placeholder="e.g. Teresa Teng">
+        </div>
+        <div class="form-group">
+          <label for="media-type">Media Type</label>
+          <select id="media-type" class="form-input" required>
+            <option value="song">Song (Karaoke)</option>
+            <option value="movie">Movie Scene (Dialogue)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="media-language">Language</label>
+          <select id="media-language" class="form-input" required>
+            <option value="Chinese">Chinese</option>
+            <option value="Spanish">Spanish</option>
+            <option value="German">German</option>
+            <option value="Japanese">Japanese</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="media-difficulty">Difficulty</label>
+          <select id="media-difficulty" class="form-input" required>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="media-video-id">YouTube Video ID (Optional)</label>
+          <input type="text" id="media-video-id" class="form-input" placeholder="e.g. Y3v7XW4sKk8">
+        </div>
+        <div class="form-group col-span-2">
+          <label for="media-original">Original Text / Lyrics (one line per line)</label>
+          <textarea id="media-original" class="form-input font-monospace" rows="5" required placeholder="甜蜜蜜 你笑得甜蜜蜜&#10;好像花儿开在春风里"></textarea>
+        </div>
+        <div class="form-group col-span-2">
+          <label for="media-translated">Translated Text (matching original line-by-line)</label>
+          <textarea id="media-translated" class="form-input font-monospace" rows="5" required placeholder="Sweetly, you smile so sweetly&#10;As if flowers blooming in the spring breeze"></textarea>
+        </div>
+        <div class="form-group col-span-2">
+          <label for="media-pinyin">Phonetic Guide / Pinyin (Optional, matching line-by-line)</label>
+          <textarea id="media-pinyin" class="form-input font-monospace" rows="5" placeholder="tián mì mì, nǐ xiào de tián mì mì&#10;hǎo xiàng huā er kāi zài chūn fēng lǐ"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-media">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-media">Save Content</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 2. ADD/EDIT FLASHCARD MODAL -->
+  <dialog id="modal-vocab" class="modal glass-panel">
+    <div class="modal-header">
+      <h3 id="modal-vocab-title">Add Vocabulary Flashcard</h3>
+      <button class="modal-close-btn" id="btn-close-vocab-modal">×</button>
+    </div>
+    <form id="form-vocab">
+      <input type="hidden" id="vocab-form-id">
+      <div class="modal-body-grid">
+        <div class="form-group">
+          <label for="vocab-word">Foreign Word / Phrase</label>
+          <input type="text" id="vocab-word" class="form-input" required placeholder="e.g. 甜蜜蜜">
+        </div>
+        <div class="form-group">
+          <label for="vocab-pinyin">Pinyin / Phonetic (Optional)</label>
+          <input type="text" id="vocab-pinyin" class="form-input" placeholder="e.g. tián mì mì">
+        </div>
+        <div class="form-group col-span-2">
+          <label for="vocab-translation">Translation / Definition</label>
+          <input type="text" id="vocab-translation" class="form-input" required placeholder="e.g. Sweetly / sweet as honey">
+        </div>
+        <div class="form-group col-span-2">
+          <label for="vocab-context">Context Sentence (where encountered)</label>
+          <textarea id="vocab-context" class="form-input" rows="2" required placeholder="e.g. 甜蜜蜜你笑得甜蜜蜜"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="vocab-box">Leitner Box (1 - 5)</label>
+          <select id="vocab-box" class="form-input" required>
+            <option value="1">Box 1 (Daily)</option>
+            <option value="2">Box 2 (2 Days)</option>
+            <option value="3">Box 3 (Weekly)</option>
+            <option value="4">Box 4 (Bi-weekly)</option>
+            <option value="5">Box 5 (Monthly)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="vocab-next-review">Next Review Date</label>
+          <input type="date" id="vocab-next-review" class="form-input" required>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-vocab">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="btn-submit-vocab">Save Flashcard</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 3. EDIT QUIZ HISTORY MODAL -->
+  <dialog id="modal-history" class="modal glass-panel">
+    <div class="modal-header">
+      <h3>Edit Study Session Log</h3>
+      <button class="modal-close-btn" id="btn-close-history-modal">×</button>
+    </div>
+    <form id="form-history">
+      <input type="hidden" id="history-form-id">
+      <div class="form-group">
+        <label for="history-notes">Study Notes / Observations</label>
+        <textarea id="history-notes" class="form-input" rows="4" required placeholder="Write details about what went well, what to practice next, etc."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-history">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Notes</button>
+      </div>
+    </form>
+  </dialog>
+
+</body>
+</html>

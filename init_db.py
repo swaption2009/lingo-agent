@@ -63,6 +63,21 @@ def initialize_database():
     )
     """)
 
+    # Create quiz_history table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS quiz_history (
+        quiz_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        content_id INTEGER NOT NULL,
+        score INTEGER NOT NULL,
+        total_questions INTEGER NOT NULL,
+        notes TEXT,
+        date_taken TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(user_id),
+        FOREIGN KEY(content_id) REFERENCES media_content(content_id)
+    )
+    """)
+
     # Insert default users
     # We will seed two users: user 1 is our Spanish learner (for backwards compatibility/existing tests),
     # and user 2 is a Chinese learner.
@@ -158,6 +173,19 @@ def initialize_database():
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
         samples,
+    )
+
+    # Insert default quiz histories
+    quiz_samples = [
+        (1, 1, 3, 3, "Perfect score! Verb conjugation was easy.", "2026-06-20T12:00:00Z"),
+        (2, 5, 2, 3, "Needs more study on pinyin tones", "2026-06-20T15:30:00Z")
+    ]
+    cursor.executemany(
+        """
+    INSERT INTO quiz_history (user_id, content_id, score, total_questions, notes, date_taken)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """,
+        quiz_samples,
     )
 
     conn.commit()
