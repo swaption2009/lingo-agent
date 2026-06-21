@@ -167,7 +167,7 @@ def fetch_lyrics_via_web_search(title: str) -> str:
         return ""
 
 
-def analyze_youtube_video(video_id: str, title: str = "") -> dict:
+def analyze_youtube_video(video_id: str, title: str = "", force: bool = False) -> dict:
     """Main orchestrator to analyze a YouTube video.
     Checks database cache first, then fetches and analyzes if missing.
     """
@@ -175,16 +175,21 @@ def analyze_youtube_video(video_id: str, title: str = "") -> dict:
     _ensure_schema(conn)
     cursor = conn.cursor()
 
-    # 1. Check database cache (keyed by the YouTube video id)
-    cursor.execute(
-        """
-    SELECT content_id, title, artist_or_movie, original_text, translated_text,
-           pinyin_text, dictionary_json, tutorial, source
-    FROM media_content WHERE video_id = ?
-    """,
-        (video_id,),
-    )
-    row = cursor.fetchone()
+    if force:
+        cursor.execute("DELETE FROM media_content WHERE video_id = ?", (video_id,))
+        conn.commit()
+        row = None
+    else:
+        # 1. Check database cache (keyed by the YouTube video id)
+        cursor.execute(
+            """
+        SELECT content_id, title, artist_or_movie, original_text, translated_text,
+               pinyin_text, dictionary_json, tutorial, source
+        FROM media_content WHERE video_id = ?
+        """,
+            (video_id,),
+        )
+        row = cursor.fetchone()
 
     if row:
         (
@@ -224,6 +229,7 @@ def analyze_youtube_video(video_id: str, title: str = "") -> dict:
             "dictionary": dictionary,
             "tutorial": tutorial or "Here is your saved tutorial for this song.",
             "source": source or "captions",
+            "cached": True,
         }
 
     # 2. Fetch transcript. Real captions are preferred because they carry the
@@ -302,4 +308,5 @@ def analyze_youtube_video(video_id: str, title: str = "") -> dict:
         "dictionary": dictionary,
         "tutorial": tutorial,
         "source": source,
+        "cached": False,
     }

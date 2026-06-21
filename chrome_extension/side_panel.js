@@ -6,6 +6,7 @@ let activeVideoTitle = null;
 let connectionActive = false;
 let currentPlayTime = 0;
 let playbackPollInterval = null;
+let activeContentId = null;
 
 let lyricsData = []; // Array of { start: float, text: string, pinyin: string, translation: string }
 let currentHighlightIndex = -1;
@@ -68,7 +69,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Button Event Listeners
   document.getElementById('btn-refresh-detection').addEventListener('click', detectActiveTab);
-  document.getElementById('btn-analyze-video').addEventListener('click', () => analyzeCurrentVideo(true));
+  document.getElementById('btn-analyze-video').addEventListener('click', () => {
+    if (analyzedVideoId && analyzedVideoId === activeVideoId) {
+      if (confirm("Lyrics for this video are already loaded. Do you want to force re-analyze with AI? (Warning: This will overwrite your custom edits, duplication, and reordering!)")) {
+        analyzeCurrentVideo(true, true);
+      }
+    } else {
+      analyzeCurrentVideo(true, false);
+    }
+  });
   document.getElementById('btn-clear-vocab').addEventListener('click', clearVocabDeck);
   document.getElementById('btn-play-pause').addEventListener('click', togglePlayback);
   document.getElementById('btn-submit-answer').addEventListener('click', checkQuizAnswer);
@@ -371,7 +380,7 @@ function getCurrentVideoStatus() {
 }
 
 // Analyze Current YouTube Video
-async function analyzeCurrentVideo(isManual = false) {
+async function analyzeCurrentVideo(isManual = false, force = false) {
   if (!connectionActive) {
     if (isManual) alert("Backend is offline. Please launch the FastAPI server first.");
     return;
@@ -415,7 +424,7 @@ async function analyzeCurrentVideo(isManual = false) {
     const res = await fetch(`${BACKEND_URL}/api/youtube/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ video_id: videoId, title: title })
+      body: JSON.stringify({ video_id: videoId, title: title, force: force })
     });
 
     if (!res.ok) {
@@ -450,6 +459,7 @@ async function analyzeCurrentVideo(isManual = false) {
 // placeholder state. Does NOT touch the saved vocabulary deck, which is global.
 function resetAnalysisUI() {
   analyzedVideoId = null;
+  activeContentId = null;
 
   // Lyrics
   lyricsData = [];
@@ -474,11 +484,31 @@ function resetAnalysisUI() {
   document.getElementById('quiz-placeholder').classList.remove('hidden');
 }
 
-// Show a banner when lyrics did not come from the video's own captions.
-function showSourceNotice(source) {
+// Show a banner when lyrics did not come from the video's own captions, or when loaded from DB cache
+function showSourceNotice(source, cached) {
   const el = document.getElementById('lyrics-source-notice');
   if (!el) return;
-  if (source === 'web_search') {
+
+  el.innerHTML = '';
+
+  if (cached) {
+    el.className = 'source-notice cached-notice';
+    el.innerHTML = `
+      <span>Lyrics loaded from database cache.</span>
+      <button id="btn-refetch-lyrics" class="btn-refetch-notice" title="Re-fetch fresh captions/lyrics and overwrite database cache">Re-fetch from AI 🔄</button>
+    `;
+    el.classList.remove('hidden');
+
+    const btnRefetch = el.querySelector('#btn-refetch-lyrics');
+    if (btnRefetch) {
+      btnRefetch.addEventListener('click', () => {
+        if (confirm("Are you sure you want to re-fetch lyrics from the internet/captions? This will overwrite your custom edits, duplication, and reordering!")) {
+          analyzeCurrentVideo(true, true);
+        }
+      });
+    }
+  } else if (source === 'web_search') {
+    el.className = 'source-notice web-search-notice';
     el.textContent = 'No captions found for this video — these lyrics were fetched from the web and may not line up exactly with the audio.';
     el.classList.remove('hidden');
   } else {
@@ -502,10 +532,10 @@ function loadAnalysisData(data) {
   list.classList.remove('hidden');
   controls.classList.remove('hidden');
 
-  // Tell the user when lyrics were sourced from the web rather than captions.
-  showSourceNotice(data.source);
+  // Tell the user when lyrics were sourced from the web rather than captions or loaded from cache.
+  showSourceNotice(data.source, data.cached);
 
-  list.innerHTML = '';
+  activeContentId = data.content_id;
   lyricsData = [];
 
   // Parse lines with [start_time] format
@@ -514,17 +544,19 @@ function loadAnalysisData(data) {
     let rawText = line.text;
     let rawPinyin = line.pinyin;
     let rawTranslation = line.translation;
+    let isSynced = false;
 
     // Handle standard timestamp prefixes [12.34]
-    const match = rawText.match(/^\[([\d.]+)\](.*)/);
+    const match = rawText.match(/^\[([\d.]+)(\*)?\](.*)/);
     if (match) {
       startVal = parseFloat(match[1]);
-      rawText = match[2];
+      isSynced = match[2] === '*';
+      rawText = match[3];
       
-      const pinMatch = rawPinyin.match(/^\[[\d.]+\](.*)/);
+      const pinMatch = rawPinyin.match(/^\[[\d.]+(?:\*)?\](.*)/);
       if (pinMatch) rawPinyin = pinMatch[1];
       
-      const transMatch = rawTranslation.match(/^\[[\d.]+\](.*)/);
+      const transMatch = rawTranslation.match(/^\[[\d.]+(?:\*)?\](.*)/);
       if (transMatch) rawTranslation = transMatch[1];
     }
 
@@ -532,30 +564,12 @@ function loadAnalysisData(data) {
       start: startVal,
       text: rawText,
       pinyin: rawPinyin,
-      translation: rawTranslation
+      translation: rawTranslation,
+      synced: isSynced
     });
-
-    // Create DOM element
-    const lineDiv = document.createElement('div');
-    lineDiv.className = 'lyrics-line';
-    lineDiv.innerHTML = `
-      <div class="lyric-original">${rawText}</div>
-      <div class="lyric-pinyin">${rawPinyin}</div>
-      <div class="lyric-translation">${rawTranslation}</div>
-    `;
-
-    // Click line to seek player
-    lineDiv.addEventListener('click', async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab) {
-        chrome.tabs.sendMessage(tab.id, { type: 'SEEK_PLAYER', time: startVal }, () => {
-          if (chrome.runtime.lastError) {} // suppress if content script not ready
-        });
-      }
-    });
-
-    list.appendChild(lineDiv);
   });
+
+  renderLyricsList();
 
   // 2. Load Dictionary & Tutorial
   document.getElementById('dictionary-placeholder').classList.add('hidden');
@@ -852,5 +866,267 @@ function nextQuizQuestion() {
     document.getElementById('quiz-feedback').classList.add('hidden');
     document.getElementById('btn-submit-answer').classList.add('hidden');
     document.getElementById('btn-next-question').classList.add('hidden');
+  }
+}
+
+// Render lyrics list dynamically from lyricsData (sorted by start time)
+function renderLyricsList(justDroppedIndex = -1) {
+  const list = document.getElementById('lyrics-list');
+  if (!list) return;
+  list.innerHTML = '';
+  
+  // Sort lyricsData by start time to keep chronological order
+  lyricsData.sort((a, b) => a.start - b.start);
+
+  lyricsData.forEach((line, idx) => {
+    const lineDiv = document.createElement('div');
+    lineDiv.className = 'lyrics-line';
+    if (idx === currentHighlightIndex) {
+      lineDiv.classList.add('active');
+    }
+    if (idx === justDroppedIndex) {
+      lineDiv.classList.add('just-dropped');
+      lineDiv.addEventListener('animationend', () => {
+        lineDiv.classList.remove('just-dropped');
+      });
+    }
+    lineDiv.dataset.index = idx;
+
+    // Helper to format seconds to MM:SS
+    const formatTime = (secs) => {
+      if (isNaN(secs) || secs < 0) return "00:00";
+      const m = Math.floor(secs / 60).toString().padStart(2, '0');
+      const s = Math.floor(secs % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    };
+
+    lineDiv.innerHTML = `
+      <div class="lyric-header">
+        <span class="lyric-timestamp${line.synced ? ' synced' : ''}" title="Click to edit manually">${line.synced ? '✓ ' : ''}${formatTime(line.start)}</span>
+        <div class="lyric-time-actions">
+          <button class="btn-delete-line" title="Delete line">🗑️</button>
+          <button class="btn-duplicate-line" title="Duplicate line">📋</button>
+          <button class="btn-sync-time" title="Sync with current video time">⏱️</button>
+          <button class="btn-edit-time" title="Edit manually">✏️</button>
+        </div>
+      </div>
+      <div class="lyric-original">${line.text}</div>
+      <div class="lyric-pinyin">${line.pinyin}</div>
+      <div class="lyric-translation">${line.translation}</div>
+    `;
+
+    // Drag & Drop event listeners to support reordering
+    lineDiv.setAttribute('draggable', 'true');
+    
+    lineDiv.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', idx);
+      lineDiv.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    lineDiv.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    lineDiv.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      lineDiv.classList.add('drag-over');
+    });
+
+    lineDiv.addEventListener('dragleave', () => {
+      lineDiv.classList.remove('drag-over');
+    });
+
+    lineDiv.addEventListener('drop', (e) => {
+      e.preventDefault();
+      lineDiv.classList.remove('drag-over');
+      const draggedIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      const targetIdx = idx;
+      if (!isNaN(draggedIdx) && draggedIdx !== targetIdx) {
+        handleReorder(draggedIdx, targetIdx);
+      }
+    });
+
+    lineDiv.addEventListener('dragend', () => {
+      lineDiv.classList.remove('dragging');
+      document.querySelectorAll('.lyrics-line').forEach(el => {
+        el.classList.remove('drag-over');
+        el.classList.remove('dragging');
+      });
+    });
+
+    // Click line to seek player
+    lineDiv.addEventListener('click', async (e) => {
+      // Seek player only if we didn't click inside header/controls
+      if (e.target.closest('.lyric-header')) return;
+      
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab) {
+        chrome.tabs.sendMessage(tab.id, { type: 'SEEK_PLAYER', time: line.start }, () => {
+          if (chrome.runtime.lastError) {} // suppress if content script not ready
+        });
+      }
+    });
+
+    // Event listener for Delete button
+    const btnDelete = lineDiv.querySelector('.btn-delete-line');
+    btnDelete.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm("Are you sure you want to delete this lyric line?")) {
+        lyricsData.splice(idx, 1);
+        renderLyricsList();
+        saveLyricsToBackend();
+      }
+    });
+
+    // Event listener for Duplicate button
+    const btnDuplicate = lineDiv.querySelector('.btn-duplicate-line');
+    btnDuplicate.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const newLine = {
+        start: parseFloat((line.start + 0.5).toFixed(1)),
+        text: line.text,
+        pinyin: line.pinyin,
+        translation: line.translation,
+        synced: line.synced
+      };
+      lyricsData.splice(idx + 1, 0, newLine);
+      renderLyricsList();
+      saveLyricsToBackend();
+    });
+
+    // Event listener for Sync button
+    const btnSync = lineDiv.querySelector('.btn-sync-time');
+    btnSync.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Snap to current play time of video player (poll updates currentPlayTime)
+      line.start = parseFloat(currentPlayTime.toFixed(1));
+      line.synced = true;
+      
+      // Re-sort and find the new index of the synced card to trigger drop animation
+      lyricsData.sort((a, b) => a.start - b.start);
+      const newIndex = lyricsData.indexOf(line);
+      
+      renderLyricsList(newIndex);
+      saveLyricsToBackend();
+    });
+
+    // Event listeners for Edit button & Timestamp badge
+    const timestampBadge = lineDiv.querySelector('.lyric-timestamp');
+    const btnEdit = lineDiv.querySelector('.btn-edit-time');
+    const timeActions = lineDiv.querySelector('.lyric-time-actions');
+
+    const startManualEdit = (e) => {
+      e.stopPropagation();
+      timeActions.innerHTML = `
+        <button class="btn-save-time" title="Save">✔️</button>
+        <button class="btn-cancel-time" title="Cancel">❌</button>
+      `;
+      
+      const header = lineDiv.querySelector('.lyric-header');
+      const oldBadge = header.querySelector('.lyric-timestamp');
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.step = '0.1';
+      input.min = '0';
+      input.className = 'lyric-time-input';
+      input.value = line.start.toFixed(1);
+      header.replaceChild(input, oldBadge);
+      input.focus();
+
+      const saveEdit = (e2) => {
+        e2.stopPropagation();
+        const newVal = parseFloat(input.value);
+        if (!isNaN(newVal) && newVal >= 0) {
+          line.start = parseFloat(newVal.toFixed(1));
+          line.synced = true;
+          
+          // Re-sort and find the new index of the edited card to trigger drop animation
+          lyricsData.sort((a, b) => a.start - b.start);
+          const newIndex = lyricsData.indexOf(line);
+          
+          renderLyricsList(newIndex);
+          saveLyricsToBackend();
+        } else {
+          renderLyricsList();
+        }
+      };
+
+      const cancelEdit = (e2) => {
+        e2.stopPropagation();
+        renderLyricsList();
+      };
+
+      lineDiv.querySelector('.btn-save-time').addEventListener('click', saveEdit);
+      lineDiv.querySelector('.btn-cancel-time').addEventListener('click', cancelEdit);
+      
+      input.addEventListener('keydown', (e2) => {
+        if (e2.key === 'Enter') {
+          saveEdit(e2);
+        } else if (e2.key === 'Escape') {
+          cancelEdit(e2);
+        }
+      });
+      input.addEventListener('click', (e2) => e2.stopPropagation());
+    };
+
+    btnEdit.addEventListener('click', startManualEdit);
+    timestampBadge.addEventListener('click', startManualEdit);
+
+    list.appendChild(lineDiv);
+  });
+}
+
+// Handle Drag and Drop reordering with chronological timestamp interpolation
+function handleReorder(draggedIndex, targetIndex) {
+  if (draggedIndex === targetIndex) return;
+
+  const [movedItem] = lyricsData.splice(draggedIndex, 1);
+  lyricsData.splice(targetIndex, 0, movedItem);
+
+  // Recalculate timestamp of the moved item to fit into its new position
+  let newStart = movedItem.start;
+  if (targetIndex === 0) {
+    const nextStart = lyricsData[1] ? lyricsData[1].start : 0;
+    newStart = Math.max(0, nextStart - 2.0);
+  } else if (targetIndex === lyricsData.length - 1) {
+    const prevStart = lyricsData[lyricsData.length - 2].start;
+    newStart = prevStart + 5.0;
+  } else {
+    const prevStart = lyricsData[targetIndex - 1].start;
+    const nextStart = lyricsData[targetIndex + 1].start;
+    newStart = (prevStart + nextStart) / 2.0;
+  }
+  
+  movedItem.start = parseFloat(newStart.toFixed(1));
+  movedItem.synced = true;
+
+  // Render list and highlight the dropped card to trigger animation
+  renderLyricsList(targetIndex);
+  saveLyricsToBackend();
+}
+
+// Persist the entire lyrics list (including edits, reordering, duplication, deletion) in the backend database
+async function saveLyricsToBackend() {
+  if (!activeContentId || !connectionActive) return;
+
+  const lines = lyricsData.map(line => ({
+    text: `[${line.start.toFixed(1)}${line.synced ? '*' : ''}]${line.text}`,
+    pinyin: `[${line.start.toFixed(1)}${line.synced ? '*' : ''}]${line.pinyin}`,
+    translation: `[${line.start.toFixed(1)}${line.synced ? '*' : ''}]${line.translation}`
+  }));
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/media/${activeContentId}/lyrics`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lines: lines })
+    });
+    if (!res.ok) {
+      console.error("Failed to save lyrics to backend");
+    }
+  } catch (err) {
+    console.error("Error saving lyrics to backend:", err);
   }
 }

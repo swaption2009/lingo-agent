@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 import google.auth
 from fastapi import FastAPI, HTTPException
@@ -64,6 +65,7 @@ DB_PATH = "lingo_database.db"
 class YoutubeAnalysisRequest(BaseModel):
     video_id: str
     title: str = ""
+    force: bool = False
 
 class VocabAddRequest(BaseModel):
     word: str
@@ -94,7 +96,7 @@ def api_analyze_youtube(req: YoutubeAnalysisRequest):
     """Analyzes a YouTube video transcript using the Chinese Analyzer."""
     from app.chinese_analyzer import analyze_youtube_video
     try:
-        res = analyze_youtube_video(req.video_id, req.title)
+        res = analyze_youtube_video(req.video_id, req.title, req.force)
         if "error" in res:
             raise HTTPException(status_code=400, detail=res["error"])
         return res
@@ -173,6 +175,17 @@ class MediaCreateUpdateRequest(BaseModel):
     dictionary_json: str = None
     tutorial: str = None
     source: str = None
+
+class TimestampsUpdateRequest(BaseModel):
+    timestamps: list[float]
+
+class LyricLineItem(BaseModel):
+    text: str
+    pinyin: str
+    translation: str
+
+class LyricsUpdateRequest(BaseModel):
+    lines: list[LyricLineItem]
 
 class VocabManualAddRequest(BaseModel):
     user_id: int
@@ -392,6 +405,110 @@ def api_delete_media(content_id: int):
     conn.commit()
     conn.close()
     return {"status": "success", "message": f"Media content {content_id} deleted."}
+
+@app.put("/api/media/{content_id}/timestamps")
+def api_update_media_timestamps(content_id: int, req: TimestampsUpdateRequest):
+    """Updates the start timestamps of the lyrics lines for a given media content."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT original_text, pinyin_text, translated_text 
+        FROM media_content WHERE content_id = ?
+    """, (content_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Media content not found")
+    
+    original_text, pinyin_text, translated_text = row
+    
+    orig_lines = original_text.split("\n")
+    pinyin_lines = pinyin_text.split("\n") if pinyin_text else []
+    trans_lines = translated_text.split("\n") if translated_text else []
+    
+    def strip_timestamp(text: str) -> str:
+        # Match e.g., "[12.34]"
+        match = re.match(r"^\[[\d.]+\](.*)", text)
+        if match:
+            return match.group(1)
+        return text
+
+    new_orig = []
+    new_pinyin = []
+    new_trans = []
+    
+    for i in range(len(orig_lines)):
+        t = req.timestamps[i] if i < len(req.timestamps) else None
+        
+        orig_clean = strip_timestamp(orig_lines[i])
+        pinyin_clean = strip_timestamp(pinyin_lines[i]) if i < len(pinyin_lines) else ""
+        trans_clean = strip_timestamp(trans_lines[i]) if i < len(trans_lines) else ""
+        
+        if t is not None:
+            new_orig.append(f"[{t:.1f}]{orig_clean}")
+            if pinyin_clean or i < len(pinyin_lines):
+                new_pinyin.append(f"[{t:.1f}]{pinyin_clean}")
+            if trans_clean or i < len(trans_lines):
+                new_trans.append(f"[{t:.1f}]{trans_clean}")
+        else:
+            new_orig.append(orig_clean)
+            if pinyin_clean or i < len(pinyin_lines):
+                new_pinyin.append(pinyin_clean)
+            if trans_clean or i < len(trans_lines):
+                new_trans.append(trans_clean)
+                
+    new_original_text = "\n".join(new_orig)
+    new_pinyin_text = "\n".join(new_pinyin)
+    new_translated_text = "\n".join(new_trans)
+    
+    cursor.execute("""
+        UPDATE media_content
+        SET original_text = ?, pinyin_text = ?, translated_text = ?
+        WHERE content_id = ?
+    """, (new_original_text, new_pinyin_text, new_translated_text, content_id))
+    
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Timestamps updated successfully"}
+
+@app.get("/api/media/check/{video_id}")
+def api_check_media_exists(video_id: str):
+    """Checks if lyrics/analysis already exist for a given YouTube video ID."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT content_id, title 
+        FROM media_content WHERE video_id = ?
+    """, (video_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {"exists": True, "content_id": row[0], "title": row[1]}
+    return {"exists": False}
+
+@app.put("/api/media/{content_id}/lyrics")
+def api_update_media_lyrics(content_id: int, req: LyricsUpdateRequest):
+    """Updates the entire lyrics list (adding, deleting, duplicating, or reordering lines) for a given media content."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT content_id FROM media_content WHERE content_id = ?", (content_id,))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Media content not found")
+        
+    original_text = "\n".join(line.text for line in req.lines)
+    pinyin_text = "\n".join(line.pinyin for line in req.lines)
+    translated_text = "\n".join(line.translation for line in req.lines)
+    
+    cursor.execute("""
+        UPDATE media_content
+        SET original_text = ?, pinyin_text = ?, translated_text = ?
+        WHERE content_id = ?
+    """, (original_text, pinyin_text, translated_text, content_id))
+    
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Lyrics updated successfully"}
 
 
 # Vocabulary Deck Additional CRUD Endpoints

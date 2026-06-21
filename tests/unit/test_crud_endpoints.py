@@ -180,3 +180,92 @@ def test_quiz_history_crud():
     response = client.get("/api/quiz_history?user_id=2")
     history_list = response.json()
     assert not any(q["quiz_id"] == quiz_id for q in history_list)
+
+def test_media_timestamp_update():
+    # 1. Create media content
+    new_media = {
+        "title": "Timestamp test song",
+        "artist_or_movie": "Test Artist",
+        "media_type": "song",
+        "language": "Chinese",
+        "difficulty": "beginner",
+        "original_text": "[1.0]Line one\n[2.5]Line two",
+        "translated_text": "[1.0]Trans one\n[2.5]Trans two",
+        "pinyin_text": "[1.0]Pin one\n[2.5]Pin two",
+        "video_id": "test_video_123"
+    }
+    response = client.post("/api/media", json=new_media)
+    assert response.status_code == 200
+    media_data = response.json()
+    content_id = media_data["content_id"]
+
+    # 2. Update timestamps
+    update_data = {
+        "timestamps": [1.5, 3.2]
+    }
+    response = client.put(f"/api/media/{content_id}/timestamps", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+
+    # 3. Retrieve media and verify new timestamps
+    response = client.get(f"/api/media/{content_id}")
+    assert response.status_code == 200
+    detail = response.json()
+    assert detail["original_text"] == "[1.5]Line one\n[3.2]Line two"
+    assert detail["pinyin_text"] == "[1.5]Pin one\n[3.2]Pin two"
+    assert detail["translated_text"] == "[1.5]Trans one\n[3.2]Trans two"
+
+    # 4. Clean up
+    response = client.delete(f"/api/media/{content_id}")
+    assert response.status_code == 200
+
+def test_media_lyrics_list_update():
+    # 1. Create media content
+    new_media = {
+        "title": "Lyrics list test song",
+        "artist_or_movie": "Test Artist",
+        "media_type": "song",
+        "language": "Chinese",
+        "difficulty": "beginner",
+        "original_text": "[1.0]Line one\n[2.5]Line two",
+        "translated_text": "[1.0]Trans one\n[2.5]Trans two",
+        "pinyin_text": "[1.0]Pin one\n[2.5]Pin two",
+        "video_id": "lyrics_list_test_video"
+    }
+    response = client.post("/api/media", json=new_media)
+    assert response.status_code == 200
+    media_data = response.json()
+    content_id = media_data["content_id"]
+
+    # Check if GET exists check works
+    response = client.get("/api/media/check/lyrics_list_test_video")
+    assert response.status_code == 200
+    assert response.json()["exists"] is True
+    assert response.json()["content_id"] == content_id
+
+    # 2. Update lyrics (duplicate a line and edit)
+    update_data = {
+        "lines": [
+            {"text": "[1.0]Line one", "pinyin": "[1.0]Pin one", "translation": "[1.0]Trans one"},
+            {"text": "[1.8]Line one duplicated", "pinyin": "[1.8]Pin one", "translation": "[1.8]Trans one"},
+            {"text": "[2.5]Line two", "pinyin": "[2.5]Pin two", "translation": "[2.5]Trans two"}
+        ]
+    }
+    response = client.put(f"/api/media/{content_id}/lyrics", json=update_data)
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+
+    # 3. Retrieve media and verify new lyrics
+    response = client.get(f"/api/media/{content_id}")
+    assert response.status_code == 200
+    detail = response.json()
+    assert detail["original_text"] == "[1.0]Line one\n[1.8]Line one duplicated\n[2.5]Line two"
+
+    # 4. Clean up
+    response = client.delete(f"/api/media/{content_id}")
+    assert response.status_code == 200
+
+    # Verify check GET returns exists = False
+    response = client.get(f"/api/media/check/lyrics_list_test_video")
+    assert response.status_code == 200
+    assert response.json()["exists"] is False

@@ -68,6 +68,26 @@ Intercepts high-stakes database modifications (`add_vocabulary_word`, `delete_vo
    agents-cli run "Search for La Bamba and start practicing it"
    ```
 
+### 🖥️ Running the Backend Server
+The Chrome Extension frontend communicates with a local FastAPI backend server. To launch the backend:
+1. Start the FastAPI server using `uvicorn` on port `8001` (to match the extension's configured port):
+   ```bash
+   uv run uvicorn app.fast_api_app:app --host 0.0.0.0 --port 8001 --reload
+   ```
+2. Access the administrative/monitoring dashboard by navigating to:
+   ```
+   http://localhost:8001/dashboard
+   ```
+
+### 🧩 Installing the Chrome Extension (Frontend)
+To install the companion Chrome Extension:
+1. Open Google Chrome and navigate to `chrome://extensions/`.
+2. Enable **Developer mode** using the toggle switch in the top-right corner.
+3. Click the **Load unpacked** button in the top-left corner.
+4. Select the `chrome_extension` folder located in the root of this project directory.
+5. Pin the extension to your Chrome toolbar.
+6. Open any YouTube video page (e.g. Spanish music or dialogue clips) and click the extension icon to launch the **Lingo Karaoke** interactive learning panel in Chrome's side panel!
+
 ---
 
 ## 🧪 Verification & Testing
