@@ -1,6 +1,6 @@
-# LingoKaraoke & CinemaLingo (Track: Agents for Good - Education)
+# LingoKaraoke (Track: Agents for Good - Education)
 
-An interactive, multi-agent foreign language tutoring system built with the **Google Antigravity SDK** (ADK) and **gemini-agents-cli** skills. The project matches the **Agents for Good** track (Advancing Education) by helping users learn foreign languages (specifically Spanish) through their favorite song lyrics (Karaoke) and movie dialogues (Cinema).
+An interactive, multi-agent Chinese language tutoring system built with the **Google Antigravity SDK** (ADK) and **gemini-agents-cli** skills. The project matches the **Agents for Good** track (Advancing Education) by helping users learn Chinese through their favorite YouTube music videos (Karaoke).
 
 ---
 
@@ -18,32 +18,40 @@ graph TD
     CoachAgent -.-> SkillQuiz[Skill: quiz-generator]
 ```
 
-1. **LingoHost (Orchestrator)**: Main entry point. Greets the user, retrieves their profile, searches the database for songs/scenes, and coordinates lesson handoffs.
-2. **LingoParser (Segmentation Sub-agent)**: Segment dialogues or lyrics line-by-line, translations, and selects focus vocabulary using the `lyric-analyzer` Skill.
-3. **LingoCoach (Quiz & Vocabulary Sub-agent)**: Explains the grammar context, generates interactive quizzes using the `quiz-generator` Skill, evaluates user answers, and logs learned words to their flashcard deck.
+1. **`lingo_host` (Orchestrator)**: Main entry point. Greets the user, retrieves their Chinese learner profile, searches the database for songs, and coordinates lesson handoffs.
+2. **`lingo_parser` (Segmentation Sub-agent)**: Segments Chinese lyrics line-by-line, generates translations, selects focus vocabulary, and automatically structures Hanyu Pinyin with tone marks using the `lyric-analyzer` Skill.
+3. **`lingo_coach` (Quiz & Vocabulary Sub-agent)**: Explains the grammar context, generates interactive quizzes using the `quiz-generator` Skill, evaluates user answers, and logs learned words with tone-marked Hanyu Pinyin to their spaced repetition deck.
 
 ---
 
 ## 🌟 Core Concepts Implemented
 
-### 1. Custom Stdio MCP Server (`mcp_server.py`)
+### 1. Custom Stdio MCP Server (`mcp_server.py`) & SQLite Cache
 Built using FastMCP to connect agents to a local SQLite database (`lingo_database.db`). Exposes tools:
-* `get_user_profile(user_id)`: Fetches target language and skill levels.
-* `search_learning_media(query, language)`: Searches matching songs/scenes.
-* `get_media_content(content_id)`: Fetches verses/dialogues.
-* `add_vocabulary_word(word, translation, context)`: Adds words to spaced-repetition deck.
+* `get_user_profile(user_id)`: Fetches target language (Chinese) and skill level.
+* `search_learning_media(query, language)`: Searches matching Chinese songs.
+* `get_media_content(content_id)`: Fetches original lyrics, translations, and Pinyin.
+* `add_vocabulary_word(word, translation, context, pinyin)`: Adds Chinese words (with Hanyu Pinyin) to the user's spaced-repetition deck.
 * `delete_vocabulary_word(word)`: Clears a card.
 * `reset_vocab_deck()`: Resets learner progress.
+* `mcp_analyze_youtube_video(video_id, title)`: Performs automated transcription, translation, and Hanyu Pinyin structuring of YouTube videos.
 
-### 2. Modular Agent Skills (`.agents/skills/`)
+### 2. Intelligent Chinese Lyrics & Video Analyzer (`app/chinese_analyzer.py`)
+Processes YouTube watch page content:
+* **Captions Integration**: Fetches captions via `youtube-transcript-api` and prefixes lines with timing metadata, e.g. `[12.5]`.
+* **Grounded Search Fallback**: For videos without captions, uses Gemini with the Google Search Grounding Tool to retrieve real, verbatim Chinese lyrics from the web (avoiding hallucinations).
+* **Timing-Preserving Caching**: Zips stored newline-delimited lyrics, translations, and Pinyin, maintaining original `[seconds]` timing prefixes for real-time highlighting.
+* **In-Place DB Migrations**: Idempotently alters older SQLite database schemas at runtime using `ALTER TABLE` to append post-release metadata fields.
+
+### 3. Modular Agent Skills (`.agents/skills/`)
 Implements procedural knowledge and templates:
-* **`lyric-analyzer`**: Splitting dialogues/lyrics, generating phonetic guides, and launching `scripts/phonetic_generator.py` for Spanish pronunciation conversion.
+* **`lyric-analyzer`**: Instruction playbooks for lyric breakdown, Hanyu Pinyin alignment, and vocabulary selection.
 * **`quiz-generator`**: Gherkin-aligned instructions for producing fill-in-the-blank, multiple-choice, and translation quizzes.
 
-### 3. Vibe Diff Safety Hook (`app/agent.py`)
+### 4. Vibe Diff Safety Hook (`app/agent.py`)
 Intercepts high-stakes database modifications (`add_vocabulary_word`, `delete_vocabulary_word`, `reset_vocab_deck`) and directory traversal attempts:
 * Displays a **Vibe Diff** summary highlighting the requested change.
-* Prompt for terminal confirmation: `Do you approve this database change? (y/N)`.
+* Prompts for terminal confirmation: `Do you approve this database change? (y/N)`.
 * Automatically bypasses interactive prompts in non-interactive (automated test) environments to prevent execution hangs.
 
 ---
@@ -55,7 +63,7 @@ Intercepts high-stakes database modifications (`add_vocabulary_word`, `delete_vo
 * **agents-cli**: Google Agents CLI (`uv tool install google-agents-cli`).
 
 ### Setup & Installation
-1. Initialize the SQLite database with sample Spanish songs ("La Bamba", "De Música Ligera") and movie dialogues ("Pan's Labyrinth", "Roma"):
+1. Initialize the SQLite database with sample Chinese Karaoke songs ("甜蜜蜜", "童话"):
    ```bash
    uv run init_db.py
    ```
@@ -65,7 +73,7 @@ Intercepts high-stakes database modifications (`add_vocabulary_word`, `delete_vo
    ```
 3. (Optional) Run the CLI directly:
    ```bash
-   agents-cli run "Search for La Bamba and start practicing it"
+   agents-cli run "Search for 甜蜜蜜 and start practicing it"
    ```
 
 ### 🖥️ Running the Backend Server
@@ -86,20 +94,21 @@ To install the companion Chrome Extension:
 3. Click the **Load unpacked** button in the top-left corner.
 4. Select the `chrome_extension` folder located in the root of this project directory.
 5. Pin the extension to your Chrome toolbar.
-6. Open any YouTube video page (e.g. Spanish music or dialogue clips) and click the extension icon to launch the **Lingo Karaoke** interactive learning panel in Chrome's side panel!
+6. Open any YouTube video page (e.g. Chinese Karaoke or music videos) and click the extension icon to launch the **Lingo Karaoke** interactive learning panel in Chrome's side panel!
 
 ---
 
 ## 🧪 Verification & Testing
 
-### 1. Unit Tests
-Run database and MCP server tool unit tests with pytest:
+### 1. Unit & Integration Tests
+Run the entire test suite with pytest:
 ```bash
-uv run pytest tests/unit/test_mcp_server.py
+uv run pytest
 ```
+*(All 24 unit and e2e integration tests pass successfully).*
 
 ### 2. Trajectory Evaluations
-Run the ADK evaluation suite to test greeting flows, search routing, and vocabulary logging:
+Run the ADK evaluation suite to test greeting flows, Chinese search routing, and vocabulary logging:
 ```bash
 agents-cli eval run --evalset tests/eval/evalsets/lingo_agent.evalset.json --config tests/eval/eval_config.json
 ```

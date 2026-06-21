@@ -31,7 +31,7 @@
       "conversation": [
         {
           "user_content": {
-            "parts": [{"text": "Search for La Bamba and start practicing it"}]
+            "parts": [{"text": "Search for 甜蜜蜜 and start practicing it"}]
           },
           "intermediate_data": {
             "tool_uses": [
@@ -41,7 +41,7 @@
               },
               {
                 "name": "search_learning_media",
-                "args": {"query": "La Bamba"}
+                "args": {"query": "甜蜜蜜", "language": "Chinese"}
               },
               {
                 "name": "get_media_content",
@@ -62,13 +62,13 @@
       "conversation": [
         {
           "user_content": {
-            "parts": [{"text": "Save the word bailar meaning to dance with context Para bailar la bamba to my flashcards"}]
+            "parts": [{"text": "Save the word 甜蜜蜜 meaning sweetly with pinyin tiánmìmì and context 甜蜜蜜 你笑得甜蜜蜜 to my flashcards"}]
           },
           "intermediate_data": {
             "tool_uses": [
               {
                 "name": "add_vocabulary_word",
-                "args": {"word": "bailar", "translation": "to dance", "context": "Para bailar la bamba"}
+                "args": {"word": "甜蜜蜜", "translation": "sweetly", "context": "甜蜜蜜 你笑得甜蜜蜜", "pinyin": "tiánmìmì"}
               }
             ]
           }

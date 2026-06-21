@@ -101,7 +101,7 @@ def test_media_crud():
 def test_vocab_crud():
     # 1. Manually add vocabulary (which will create a card)
     vocab_data = {
-        "user_id": 2, # chinese_learner
+        "user_id": 1, # chinese_learner
         "word": "明日",
         "translation": "Tomorrow",
         "context_sentence": "明日があるさ",
@@ -137,10 +137,10 @@ def test_vocab_crud():
 
 def test_quiz_history_crud():
     # 1. Create a quiz history entry
-    # Note: user_id 2 and content_id 5 are seeded in the database.
+    # Note: user_id 1 and content_id 1 are seeded in the database.
     history_data = {
-        "user_id": 2,
-        "content_id": 5,
+        "user_id": 1,
+        "content_id": 1,
         "score": 3,
         "total_questions": 3,
         "notes": "Test quiz log",
@@ -153,7 +153,7 @@ def test_quiz_history_crud():
     quiz_id = res_data["quiz_id"]
 
     # 2. Retrieve history for user
-    response = client.get("/api/quiz_history?user_id=2")
+    response = client.get("/api/quiz_history?user_id=1")
     assert response.status_code == 200
     history_list = response.json()
     # Find our logged quiz
@@ -177,7 +177,7 @@ def test_quiz_history_crud():
     assert response.status_code == 200
 
     # Verify deleted
-    response = client.get("/api/quiz_history?user_id=2")
+    response = client.get("/api/quiz_history?user_id=1")
     history_list = response.json()
     assert not any(q["quiz_id"] == quiz_id for q in history_list)
 

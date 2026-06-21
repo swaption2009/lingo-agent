@@ -79,68 +79,14 @@ def initialize_database():
     """)
 
     # Insert default users
-    # We will seed two users: user 1 is our Spanish learner (for backwards compatibility/existing tests),
-    # and user 2 is a Chinese learner.
+    # We seed user 1 as a Chinese learner (primary profile)
     cursor.execute("""
     INSERT INTO users (user_id, username, target_language, skill_level)
-    VALUES (1, 'learner', 'Spanish', 'beginner')
+    VALUES (1, 'chinese_learner', 'Chinese', 'beginner')
     """)
 
-    cursor.execute("""
-    INSERT INTO users (user_id, username, target_language, skill_level)
-    VALUES (2, 'chinese_learner', 'Chinese', 'beginner')
-    """)
-
-    # Sample content list
+    # Sample content list (Chinese Karaoke Songs only)
     samples = [
-        # Song 1: La Bamba
-        (
-            "La Bamba",
-            "Ritchie Valens",
-            "song",
-            "Spanish",
-            "beginner",
-            "Para bailar la bamba\nPara bailar la bamba se necesita una poca de gracia\nUna poca de gracia y otra cosita\nAy arriba y arriba\nAy arriba y arriba, por ti seré, por ti seré\nYo no soy marinero\nYo no soy marinero, soy capitán, soy capitán\nBamba, bamba",
-            "To dance the bamba\nTo dance the bamba you need a little bit of grace\nA little bit of grace and another little thing\nOh up and up\nOh up and up, for you I will be, for you I will be\nI am not a sailor\nI am not a sailor, I am a captain, I am a captain\nBamba, bamba",
-            None,
-            None,
-        ),
-        # Song 2: De Música Ligera
-        (
-            "De Música Ligera",
-            "Soda Stereo",
-            "song",
-            "Spanish",
-            "intermediate",
-            "Ella durmió al calor de las masas\nY yo desperté queriendo soñarla\nAlgún tiempo atrás pensé en escribirle\nY nunca sorteé las trampas del amor\nDe música ligera\nNada nos libra, nada más queda",
-            "She slept in the heat of the masses\nAnd I woke up wanting to dream of her\nSome time ago I thought of writing to her\nAnd I never avoided the traps of love\nOf light music\nNothing frees us, nothing else remains",
-            None,
-            None,
-        ),
-        # Movie scene 1: Pan's Labyrinth
-        (
-            "El Laberinto del Fauno (Pan's Labyrinth)",
-            "Guillermo del Toro",
-            "movie",
-            "Spanish",
-            "beginner",
-            "El capitán no es mi padre.\nMi padre era sastre. Se perdió en la guerra.",
-            "The captain is not my father.\nMi father was a tailor. He was lost in the war.",
-            None,
-            None,
-        ),
-        # Movie scene 2: Roma
-        (
-            "Roma",
-            "Alfonso Cuarón",
-            "movie",
-            "Spanish",
-            "intermediate",
-            "Estamos solas. No importa lo que te digan, siempre estamos solas.",
-            "We are alone. No matter what they tell you, we are always alone.",
-            None,
-            None,
-        ),
         # Chinese Song 1: 甜蜜蜜 (Tian Mi Mi)
         (
             "甜蜜蜜 (Tian Mi Mi)",
@@ -177,8 +123,8 @@ def initialize_database():
 
     # Insert default quiz histories
     quiz_samples = [
-        (1, 1, 3, 3, "Perfect score! Verb conjugation was easy.", "2026-06-20T12:00:00Z"),
-        (2, 5, 2, 3, "Needs more study on pinyin tones", "2026-06-20T15:30:00Z")
+        (1, 1, 3, 3, "Perfect score! Pinyin learning is going well.", "2026-06-20T12:00:00Z"),
+        (1, 2, 2, 3, "Needs more study on pinyin tones", "2026-06-20T15:30:00Z")
     ]
     cursor.executemany(
         """
@@ -190,7 +136,7 @@ def initialize_database():
 
     conn.commit()
     conn.close()
-    print("Database initialized and seeded successfully.")
+    print("Database initialized and seeded successfully with Chinese Karaoke data.")
 
 
 if __name__ == "__main__":

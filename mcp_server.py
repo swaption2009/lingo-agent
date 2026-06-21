@@ -29,7 +29,7 @@ def get_user_profile(user_id: int = 1) -> dict:
     return {"error": "User not found"}
 
 @mcp.tool()
-def search_learning_media(query: str, language: str = "Spanish") -> dict:
+def search_learning_media(query: str, language: str = "Chinese") -> dict:
     """Searches for songs or movies available in the database for learning.
     
     Args:
