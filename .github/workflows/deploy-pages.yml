@@ -33,6 +33,10 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Auto-enable Pages (and set the build source to GitHub Actions) via the
+          # API if it isn't already enabled, so the first run doesn't 404.
+          enablement: true
 
       - name: Upload landing/ as Pages artifact
         uses: actions/upload-pages-artifact@v3
