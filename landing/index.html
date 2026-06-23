@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LingoKaraoke — Learn Chinese from YouTube Music Videos</title>
+  
+  <!-- SEO & Social Media Meta Tags -->
+  <meta name="description" content="LingoKaraoke is an interactive, multi-agent Chinese language tutor built with Google ADK and Gemini. Turn any YouTube music video into synced karaoke lessons, grammar breakdowns, and quizzes.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="LingoKaraoke — AI Chinese Tutor Chrome Extension">
+  <meta property="og:description" content="Turn YouTube music videos into interactive Chinese karaoke lessons. Sync pinyin, get grammar explanations, and build vocabulary with Google ADK & Gemini.">
+  <meta property="og:image" content="assets/screenshots/hero-extension.png">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="LingoKaraoke — AI Chinese Tutor Chrome Extension">
+  <meta name="twitter:description" content="Turn YouTube music videos into interactive Chinese karaoke lessons. Sync pinyin, get grammar explanations, and build vocabulary with Google ADK & Gemini.">
+  <meta name="twitter:image" content="assets/screenshots/hero-extension.png">
+  
+  <!-- Google Fonts Link Connection -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Local Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Defer Local Script (No ES module, works on file://) -->
+  <script src="js/main.js" defer></script>
+</head>
+<body>
+
+  <!-- Glowing Neon Backdrop Blobs -->
+  <div class="neon-bg-glow glow-top-left" aria-hidden="true"></div>
+  <div class="neon-bg-glow glow-bottom-right" aria-hidden="true"></div>
+
+  <!-- Sticky Top Navigation -->
+  <header>
+    <div class="container nav-container">
+      <a href="#" class="nav-logo" aria-label="LingoKaraoke Home">
+        <img src="assets/logo.svg" alt="LingoKaraoke Logo" width="34" height="34">
+        <span class="logo-wordmark gradient-text">LINGO KARAOKE</span>
+      </a>
+      
+      <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <span class="hamburger-icon"></span>
+      </button>
+
+      <nav class="nav-menu">
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#how">How It Works</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="https://github.com/swaption2009/lingo-agent" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+        <div class="nav-cta">
+          <a href="#get-started" class="btn btn-primary">Install Extension</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="container hero-content reveal">
+        <div class="eyebrow-badge">Agents for Good · Education — built with Google ADK</div>
+        <h1>Learn Chinese from the <br><span class="gradient-text">songs you already love.</span></h1>
+        <p>Turn any YouTube music video into an interactive karaoke lesson with synced pinyin, translation, grammar breakdowns, and quizzes using advanced AI multi-agents.</p>
+        <div class="hero-actions">
+          <a href="#get-started" class="btn btn-primary">Install the Extension</a>
+          <a href="#how" class="btn btn-secondary">See how it works</a>
+        </div>
+      </div>
+      
+      <div class="container hero-visual reveal delay-1">
+        <div class="browser-frame">
+          <div class="browser-bar" aria-hidden="true">
+            <div class="browser-dots">
+              <span class="browser-dot red"></span>
+              <span class="browser-dot yellow"></span>
+              <span class="browser-dot green"></span>
+            </div>
+            <div class="browser-address">youtube.com/watch?v=LingoKaraoke</div>
+          </div>
+          <div class="browser-content">
+            <picture>
+              <source type="image/webp" srcset="assets/screenshots/hero-extension.webp">
+              <img src="assets/screenshots/hero-extension.png" alt="LingoKaraoke Chrome Side Panel Extension rendering Chinese lyrics and synced pinyin beside a YouTube music video" width="2551" height="1353" fetchpriority="high" decoding="async">
+            </picture>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trust Strip -->
+    <div class="trust-strip">
+      <div class="container trust-container">
+        <span class="trust-title">Powered By</span>
+        <div class="trust-badges">
+          <span class="trust-badge">Google ADK</span>
+          <span class="trust-badge">Gemini</span>
+          <span class="trust-badge">MCP</span>
+          <span class="trust-badge highlight">FastAPI</span>
+          <span class="trust-badge">SQLite</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features Section -->
+    <section id="features">
+      <div class="container">
+        <h2>Intelligent Features for Modern Learners</h2>
+        
+        <div class="features-grid">
+          <!-- Card 1 (Lyrics - Wide) -->
+          <div class="glass-card feature-card wide reveal">
+            <div class="feature-img-wrapper">
+              <picture>
+                <source type="image/webp" srcset="assets/screenshots/feature-lyrics.webp">
+                <img src="assets/screenshots/feature-lyrics.png" alt="Karaoke lyrics segment displaying large characters and aligned pinyin with colored tone indicators" width="2551" height="1352" loading="lazy" decoding="async">
+              </picture>
+            </div>
+            <h3>Karaoke lyrics + pinyin, synced to the video</h3>
+            <p>Sing along as lyrics and Hanyu Pinyin with colored tone markers highlight in real time, synced syllable-by-syllable to the audio. Follow the rhythm while reading characters and learning the correct tones naturally.</p>
+          </div>
+
+          <!-- Card 2 (Grammar) -->
+          <div class="glass-card feature-card reveal delay-1">
+            <div class="feature-img-wrapper">
+              <picture>
+                <source type="image/webp" srcset="assets/screenshots/feature-grammar.webp">
+                <img src="assets/screenshots/feature-grammar.png" alt="Grammar breakdown panel showing translations of grammatical particles and sentence structure explanations" width="2548" height="1358" loading="lazy" decoding="async">
+              </picture>
+            </div>
+            <h3>Grammar & vocabulary, explained</h3>
+            <p>Understand the lyrics. Dive into detailed sentence structure notes and vocabulary explanations generated by dedicated AI tutor agents, clarifying particles, idioms, and context-specific meanings.</p>
+          </div>
+
+          <!-- Card 3 (Quizzes) -->
+          <div class="glass-card feature-card reveal">
+            <div class="feature-img-wrapper">
+              <picture>
+                <source type="image/webp" srcset="assets/screenshots/feature-quiz.webp">
+                <img src="assets/screenshots/feature-quiz.png" alt="Interactive quiz panel displaying multiple choice vocabulary questions and feedback on answers" width="2548" height="1358" loading="lazy" decoding="async">
+              </picture>
+            </div>
+            <h3>Interactive quizzes</h3>
+            <p>Test what you've learned. Put your comprehension to the test with dynamically generated, text-matching fill-in-the-blank, character translation, and tone identification quizzes based on song segments.</p>
+          </div>
+
+          <!-- Card 4 (SRS Deck) -->
+          <div class="glass-card feature-card reveal delay-1">
+            <div class="feature-img-wrapper">
+              <picture>
+                <source type="image/webp" srcset="assets/screenshots/feature-srs-deck.webp">
+                <img src="assets/screenshots/feature-srs-deck.png" alt="Spaced repetition deck displaying vocabulary review cards and Leitner box progression" width="1532" height="1113" loading="lazy" decoding="async">
+              </picture>
+            </div>
+            <h3>Leitner spaced-repetition deck</h3>
+            <p>Lock in new words forever. Bank unfamiliar vocabulary during karaoke sessions straight to a persistent Spaced Repetition System (SRS) review deck using the Leitner method to ensure long-term retention.</p>
+          </div>
+
+          <!-- Card 5 (Dashboard) -->
+          <div class="glass-card feature-card reveal delay-2">
+            <div class="feature-img-wrapper">
+              <picture>
+                <source type="image/webp" srcset="assets/screenshots/feature-dashboard.webp">
+                <img src="assets/screenshots/feature-dashboard.png" alt="Web companion dashboard showing weekly streaks, statistics, and saved song library" width="1532" height="1113" loading="lazy" decoding="async">
+              </picture>
+            </div>
+            <h3>Learner dashboard & library</h3>
+            <p>Track your progress. Review your learning streaks, watch vocabulary acquisition counts climb, and manage a personalized library of studied songs inside a comprehensive companion web dashboard.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how">
+      <div class="container">
+        <h2>How It Works</h2>
+        
+        <div class="how-container glass-panel reveal">
+          <div class="how-grid">
+            <div class="how-step">
+              <span class="step-num">01</span>
+              <h3>Choose Your Song</h3>
+              <p>Navigate to any Chinese music video or audio track on YouTube that you want to study with.</p>
+            </div>
+            
+            <div class="how-step">
+              <span class="step-num">02</span>
+              <h3>Analyze with AI</h3>
+              <p>Click "Analyze with AI" in your Chrome side panel. Collaborating agents immediately fetch, align, and construct tone-marked pinyin with translations.</p>
+            </div>
+            
+            <div class="how-step">
+              <span class="step-num">03</span>
+              <h3>Sing and Review</h3>
+              <p>Sing along to the synced text, drill challenging grammar structures, solve interactive quizzes, and save words to your persistent review deck.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Multi-Agent Architecture Section -->
+    <section id="architecture">
+      <div class="container">
+        <h2>Cooperating Multi-Agent Architecture</h2>
+        
+        <div class="arch-grid">
+          <div class="arch-visual reveal">
+            <picture>
+              <source type="image/webp" srcset="assets/screenshots/architecture-diagram.webp">
+              <img src="assets/screenshots/architecture-diagram.png" alt="Architecture diagram showing flow from YouTube video to LingoHost orchestrator, routing to LingoParser and LingoCoach, backed by LingoMCP SQLite server" width="782" height="394" loading="lazy" decoding="async">
+            </picture>
+          </div>
+          
+          <div class="arch-content reveal delay-1">
+            <h3>Powered by Google ADK & Gemini</h3>
+            <p class="arch-intro">LingoKaraoke uses a multi-agent orchestration framework to achieve real-time lyric alignment and context-aware tutoring.</p>
+            
+            <div class="agent-cards">
+              <div class="agent-item host">
+                <h4>LingoHost <span class="agent-tag">Orchestrator</span></h4>
+                <p>Coordinates the user experience. It loads learner profiles, queries song catalogs, and routes parsing and review tasks to specialized agents.</p>
+              </div>
+              
+              <div class="agent-item parser">
+                <h4>LingoParser <span class="agent-tag">Lyric Analyzer</span></h4>
+                <p>Splits audio into precise timestamps, structures Hanyu Pinyin with tones, and outputs literal and poetic English translations (Skill: lyric-analyzer).</p>
+              </div>
+              
+              <div class="agent-item coach">
+                <h4>LingoCoach <span class="agent-tag">Learning Coach</span></h4>
+                <p>Explains complex syntax, designs customized vocabulary matching and tone quizzes, and structures flashcard cards for the SRS deck (Skill: quiz-generator).</p>
+              </div>
+
+              <div class="agent-item mcp">
+                <h4>LingoMCP <span class="agent-tag">Model Context Protocol</span></h4>
+                <p>A custom standard stdio MCP server wrapping SQLite databases, allowing LLM agents to perform structured profile, song, and vocabulary mutations.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Get Started Section -->
+    <section id="get-started">
+      <div class="container">
+        <h2>Get Started</h2>
+        
+        <div class="get-started-box glass-panel reveal">
+          <p class="get-started-intro">LingoKaraoke is an open-source development prototype built for the <strong>Agents for Good Challenge</strong>. Follow these simple steps to install the unpacked extension in developer mode.</p>
+          
+          <div class="steps-list">
+            <!-- Step 1 -->
+            <div class="step-item">
+              <div class="step-badge">1</div>
+              <div class="step-details">
+                <h3>Clone the Repository</h3>
+                <p>Use Git to clone the project to your local computer.</p>
+                <div class="code-block">
+                  <code>git clone https://github.com/swaption2009/lingo-agent</code>
+                  <button class="copy-btn" aria-label="Copy clone command">Copy</button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Step 2 -->
+            <div class="step-item">
+              <div class="step-badge">2</div>
+              <div class="step-details">
+                <h3>Start the Backend Server</h3>
+                <p>Run the FastAPI server which acts as the agent gateway. Make sure you have `uv` installed.</p>
+                <div class="code-block">
+                  <code>uv run uvicorn app.fast_api_app:app --port 8001 --reload</code>
+                  <button class="copy-btn" aria-label="Copy run backend server command">Copy</button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Step 3 -->
+            <div class="step-item">
+              <div class="step-badge">3</div>
+              <div class="step-details">
+                <h3>Load the Extension</h3>
+                <p>Open Google Chrome and navigate to <strong>chrome://extensions</strong>. Enable <strong>Developer mode</strong> in the top-right corner, click <strong>Load unpacked</strong>, and select the <strong>chrome_extension</strong> folder in the root of the cloned directory.</p>
+              </div>
+            </div>
+            
+            <!-- Step 4 -->
+            <div class="step-item">
+              <div class="step-badge">4</div>
+              <div class="step-details">
+                <h3>Start Singing & Studying</h3>
+                <p>Navigate to any Chinese music video on YouTube and click the LingoKaraoke icon in your Chrome Side Panel to trigger your AI tutor.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="get-started-cta">
+            <a href="https://github.com/swaption2009/lingo-agent" class="btn btn-primary" target="_blank" rel="noopener">View on GitHub</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h4>LINGO KARAOKE</h4>
+          <p>An intelligent, multi-agent language assistant transforming music videos into interactive Chinese lessons.</p>
+          <a href="https://github.com/swaption2009/lingo-agent" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" aria-label="View LingoKaraoke on GitHub">View on GitHub</a>
+        </div>
+        
+        <div class="footer-links">
+          <h5>Navigation</h5>
+          <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how">How It Works</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-links">
+          <h5>Hackathon Track</h5>
+          <p style="margin-bottom: 0.5rem; font-weight: 600; color: var(--color-text);">Agents for Good — Advancing Education</p>
+          <p style="font-size: 0.85rem; line-height: 1.4;">Leveraging Gemini, MCP servers, and Google Agent Development Kit to provide low-cost, personalized tutoring.</p>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2026 LingoKaraoke. All rights reserved.</p>
+        <span class="footer-challenge-badge">Built for the 5-day Vibe Coding Challenge</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -4,6 +4,15 @@ An interactive, multi-agent Chinese language tutoring system built with the **Go
 
 ---
 
+## 🌐 Landing Page
+
+A promotional landing page for LingoKaraoke lives in [`landing/`](landing/) — a self-contained static site (HTML/CSS/vanilla JS, no build step, WebP-optimized screenshots).
+
+* **Live (GitHub Pages):** `https://swaption2009.github.io/lingo-agent/` — enable once via **Settings → Pages → Source: "GitHub Actions"**. The [`deploy-pages.yml`](.github/workflows/deploy-pages.yml) workflow then republishes `landing/` on every push to `main`.
+* **Local:** open `landing/index.html` directly, serve it with `python3 -m http.server -d landing`, or view it through the FastAPI backend at `http://localhost:8001/landing/` (the root `/` is reserved by the ADK dev UI).
+
+---
+
 ## 🏗️ Architecture & Multi-Agent Design
 
 The system implements a cooperative multi-agent architecture with three specialized agents:

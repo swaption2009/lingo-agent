@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" width="100%" height="100%">
+  <defs>
+    <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <!-- Background Glow (subtle) -->
+  <circle cx="50" cy="50" r="38" fill="url(#logo-grad)" opacity="0.15" filter="url(#glow)" />
+  
+  <!-- Outer Speech Bubble / Chat Shape -->
+  <path d="M50 15C30.67 15 15 28.43 15 45c0 8.1 3.76 15.48 9.87 20.94L20 80l16.14-8.07C40.48 73.87 45.13 75 50 75c19.33 0 35-13.43 35-30S69.33 15 50 15z" 
+        stroke="url(#logo-grad)" 
+        stroke-width="5" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="rgba(10, 10, 15, 0.6)" />
+
+  <!-- Inner Music Note Symbol -->
+  <path d="M43 38v20c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6c1.17 0 2.26.34 3.19.92V43l22-5v17c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6c1.17 0 2.26.34 3.19.92V33L43 38z" 
+        fill="url(#logo-grad)" 
+        filter="url(#glow)" />
+</svg>

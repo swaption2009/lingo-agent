@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="fav-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <!-- Outer shape -->
+  <path d="M50 10C27.91 10 10 25.67 10 45c0 9.45 4.3 18.06 11.28 24.43L15 85l18.45-9.22C38.26 77.85 43.58 79 50 79c22.09 0 40-15.67 40-35S72.09 10 50 10z" 
+        fill="url(#fav-grad)" />
+  <!-- Inner note cutout -->
+  <path d="M43 35v20c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6c1.17 0 2.26.34 3.19.92V40l22-5v17c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6c1.17 0 2.26.34 3.19.92V30L43 35z" 
+        fill="#0a0a0f" />
+</svg>
