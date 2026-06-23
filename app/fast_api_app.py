@@ -688,6 +688,11 @@ def read_index():
 # Mount static files
 app.mount("/dashboard-assets", StaticFiles(directory="app/frontend"), name="dashboard-assets")
 
+# Serve the marketing landing page (also published to GitHub Pages) for local one-server demos.
+# NOTE: the ADK dev UI reserves "/" (it redirects to /dev-ui), so the landing is mounted at
+# /landing. With html=True the page's relative asset paths resolve against the /landing/ base.
+app.mount("/landing", StaticFiles(directory="landing", html=True), name="landing")
+
 
 # Main execution
 if __name__ == "__main__":
