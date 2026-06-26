@@ -1,6 +1,6 @@
 # LingoKaraoke (Track: Agents for Good - Education)
 
-An interactive, multi-agent Chinese language tutoring system built with the **Google Antigravity SDK** (ADK) and **gemini-agents-cli** skills. The project matches the **Agents for Good** track (Advancing Education) by helping users learn Chinese through their favorite YouTube music videos (Karaoke).
+An AI-Powered Cultural Immersion Studio and lyrics learning environment. Step onto the stage and master Chinese through the universal language of music. By analyzing your favorite YouTube music videos, LingoKaraoke helps you achieve perfect lyric harmony—guiding your performance and teaching vocabulary naturally as you sing. The project supports the **Agents for Good** track (Advancing Education) by making language learning accessible and engaging.
 
 **🔗 Live landing page: [swaption2009.github.io/lingo-agent](https://swaption2009.github.io/lingo-agent/)**
 
