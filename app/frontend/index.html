@@ -7,6 +7,7 @@
   <!-- Outfit and Orbitron Google Fonts for premium tech look -->
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Orbitron:wght@600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/dashboard-assets/style.css">
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="/dashboard-assets/app.js" defer></script>
 </head>
 <body class="dark-theme">
@@ -396,6 +397,29 @@
         </div>
 
       </section>
+    </main>
+
+    <!-- VIEW 3: SHARED LESSON (UNAUTHENTICATED) -->
+    <main id="view-shared-lesson" class="shared-lesson-container hidden" style="flex-grow: 1; padding: 20px; overflow-y: auto;">
+      <header class="lesson-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 id="lesson-title">Loading Lesson...</h2>
+        <div class="lesson-actions">
+          <button id="btn-lesson-login" class="btn btn-secondary btn-glow">Login to Save Progress</button>
+          <button id="btn-lesson-dashboard" class="btn btn-primary btn-glow hidden">Go to Dashboard</button>
+        </div>
+      </header>
+      <div class="lesson-content-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="lesson-player-section glass-panel">
+          <div id="youtube-player-container" class="video-container" style="aspect-ratio: 16/9; background: #000; margin-bottom: 15px; border-radius: 8px; overflow: hidden;"></div>
+          <div class="lesson-tutorial" id="lesson-tutorial-content" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary);"></div>
+        </div>
+        <div class="lesson-lyrics-section glass-panel" style="display: flex; flex-direction: column; max-height: 70vh;">
+          <h3 style="margin-top: 0;">Interactive Lyrics</h3>
+          <div class="lyrics-scroll-box" id="lesson-lyrics-box" style="flex-grow: 1; overflow-y: auto; margin-bottom: 20px; padding-right: 10px;"></div>
+          <h3 style="margin-top: 0;">Key Vocabulary</h3>
+          <div class="vocab-list-box" id="lesson-vocab-box" style="height: 150px; overflow-y: auto;"></div>
+        </div>
+      </div>
     </main>
 
   </div> <!-- /app-wrapper -->

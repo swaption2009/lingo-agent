@@ -218,6 +218,55 @@ class QuizHistoryUpdateRequest(BaseModel):
     total_questions: int = None
 
 
+@app.post("/api/auth/login")
+def api_auth_login(req: dict):
+    """Simple login by username for the prototype."""
+    username = req.get("username")
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, username, target_language, skill_level FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {
+            "user_id": row[0],
+            "username": row[1],
+            "target_language": row[2],
+            "skill_level": row[3]
+        }
+    raise HTTPException(status_code=404, detail="User not found")
+
+@app.get("/api/share/{video_id}")
+def api_get_shared_lesson(video_id: str):
+    """Retrieves read-only lesson data for unauthenticated sharing."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT content_id, title, artist_or_movie, media_type, language, difficulty, 
+               original_text, translated_text, pinyin_text, video_id, dictionary_json, tutorial, source
+        FROM media_content WHERE video_id = ?
+    """, (video_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Shared lesson not found")
+    
+    return {
+        "content_id": row[0],
+        "title": row[1],
+        "artist_or_movie": row[2],
+        "media_type": row[3],
+        "language": row[4],
+        "difficulty": row[5],
+        "original_text": row[6],
+        "translated_text": row[7],
+        "pinyin_text": row[8],
+        "video_id": row[9],
+        "dictionary_json": row[10],
+        "tutorial": row[11],
+        "source": row[12]
+    }
+
 # User CRUD Endpoints
 
 @app.get("/api/users")
