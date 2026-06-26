@@ -44,6 +44,21 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         activeUser = JSON.parse(savedUser);
         showDashboard();
+      fetch("/api/config")
+        .then(res => res.json())
+        .then(config => {
+          const phoneticName = config.phonetic_guide || "Phonetic Guide";
+          const mediaLabel = document.querySelector('label[for="media-pinyin"]');
+          if (mediaLabel) mediaLabel.textContent = `${phoneticName} (Optional, matching line-by-line)`;
+          const vocabLabel = document.querySelector('label[for="vocab-pinyin"]');
+          if (vocabLabel) vocabLabel.textContent = `${phoneticName} (Optional)`;
+          
+          document.querySelectorAll('.vocab-pinyin-line, .vocab-pinyin, .lyric-pinyin').forEach(el => {
+            // These classes stay the same, but if there's any hardcoded text we'd update it
+          });
+        })
+        .catch(err => console.error(err));
+
       } catch (e) {
         localStorage.removeItem("lingo_active_user");
         showAuth();
@@ -113,6 +128,21 @@ document.addEventListener("DOMContentLoaded", () => {
       activeUser = selected;
       localStorage.setItem("lingo_active_user", JSON.stringify(activeUser));
       showDashboard();
+      fetch("/api/config")
+        .then(res => res.json())
+        .then(config => {
+          const phoneticName = config.phonetic_guide || "Phonetic Guide";
+          const mediaLabel = document.querySelector('label[for="media-pinyin"]');
+          if (mediaLabel) mediaLabel.textContent = `${phoneticName} (Optional, matching line-by-line)`;
+          const vocabLabel = document.querySelector('label[for="vocab-pinyin"]');
+          if (vocabLabel) vocabLabel.textContent = `${phoneticName} (Optional)`;
+          
+          document.querySelectorAll('.vocab-pinyin-line, .vocab-pinyin, .lyric-pinyin').forEach(el => {
+            // These classes stay the same, but if there's any hardcoded text we'd update it
+          });
+        })
+        .catch(err => console.error(err));
+
     }
   });
 
@@ -132,6 +162,21 @@ document.addEventListener("DOMContentLoaded", () => {
       activeUser = newUser;
       localStorage.setItem("lingo_active_user", JSON.stringify(activeUser));
       showDashboard();
+      fetch("/api/config")
+        .then(res => res.json())
+        .then(config => {
+          const phoneticName = config.phonetic_guide || "Phonetic Guide";
+          const mediaLabel = document.querySelector('label[for="media-pinyin"]');
+          if (mediaLabel) mediaLabel.textContent = `${phoneticName} (Optional, matching line-by-line)`;
+          const vocabLabel = document.querySelector('label[for="vocab-pinyin"]');
+          if (vocabLabel) vocabLabel.textContent = `${phoneticName} (Optional)`;
+          
+          document.querySelectorAll('.vocab-pinyin-line, .vocab-pinyin, .lyric-pinyin').forEach(el => {
+            // These classes stay the same, but if there's any hardcoded text we'd update it
+          });
+        })
+        .catch(err => console.error(err));
+
     } catch (e) {
       alert("Registration failed. Please try again.");
     }
@@ -257,6 +302,21 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.setItem("lingo_active_user", JSON.stringify(activeUser));
         document.getElementById("profile-edit-box").classList.add("hidden");
         showDashboard();
+      fetch("/api/config")
+        .then(res => res.json())
+        .then(config => {
+          const phoneticName = config.phonetic_guide || "Phonetic Guide";
+          const mediaLabel = document.querySelector('label[for="media-pinyin"]');
+          if (mediaLabel) mediaLabel.textContent = `${phoneticName} (Optional, matching line-by-line)`;
+          const vocabLabel = document.querySelector('label[for="vocab-pinyin"]');
+          if (vocabLabel) vocabLabel.textContent = `${phoneticName} (Optional)`;
+          
+          document.querySelectorAll('.vocab-pinyin-line, .vocab-pinyin, .lyric-pinyin').forEach(el => {
+            // These classes stay the same, but if there's any hardcoded text we'd update it
+          });
+        })
+        .catch(err => console.error(err));
+
       } else {
         alert("Failed to update profile.");
       }

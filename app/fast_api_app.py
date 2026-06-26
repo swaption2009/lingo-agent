@@ -14,7 +14,12 @@ from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
 
 setup_telemetry()
-_, project_id = google.auth.default()
+
+try:
+    _, project_id = google.auth.default()
+except google.auth.exceptions.DefaultCredentialsError:
+    project_id = "test-project"
+
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 
@@ -109,7 +114,7 @@ def api_get_vocab(user_id: int = 2):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT vocab_id, word, translation, context_sentence, pinyin, box_number, next_review_date 
+    SELECT vocab_id, word, translation, context_sentence, phonetic, box_number, next_review_date 
     FROM vocabulary_deck WHERE user_id = ?
     """, (user_id,))
     rows = cursor.fetchall()
@@ -220,6 +225,13 @@ class QuizHistoryUpdateRequest(BaseModel):
 
 # User CRUD Endpoints
 
+
+from app.config import load_language_config
+
+@app.get("/api/config")
+def get_config():
+    return load_language_config()
+
 @app.get("/api/users")
 def api_get_users():
     """Retrieves all user profiles."""
@@ -328,7 +340,7 @@ def api_get_media_detail(content_id: int):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT content_id, title, artist_or_movie, media_type, language, difficulty, 
-               original_text, translated_text, pinyin_text, video_id, dictionary_json, tutorial, source
+               original_text, translated_text, phonetic_text, video_id, dictionary_json, tutorial, source
         FROM media_content WHERE content_id = ?
     """, (content_id,))
     row = cursor.fetchone()
@@ -358,7 +370,7 @@ def api_create_media(req: MediaCreateUpdateRequest):
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO media_content (title, artist_or_movie, media_type, language, difficulty, 
-                                   original_text, translated_text, pinyin_text, video_id, dictionary_json, tutorial, source)
+                                   original_text, translated_text, phonetic_text, video_id, dictionary_json, tutorial, source)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         req.title, req.artist_or_movie, req.media_type, req.language, req.difficulty,
@@ -378,7 +390,7 @@ def api_update_media(content_id: int, req: MediaCreateUpdateRequest):
     cursor.execute("""
         UPDATE media_content 
         SET title = ?, artist_or_movie = ?, media_type = ?, language = ?, difficulty = ?, 
-            original_text = ?, translated_text = ?, pinyin_text = ?, video_id = ?, 
+            original_text = ?, translated_text = ?, phonetic_text = ?, video_id = ?, 
             dictionary_json = ?, tutorial = ?, source = ?
         WHERE content_id = ?
     """, (
@@ -463,7 +475,7 @@ def api_update_media_timestamps(content_id: int, req: TimestampsUpdateRequest):
     
     cursor.execute("""
         UPDATE media_content
-        SET original_text = ?, pinyin_text = ?, translated_text = ?
+        SET original_text = ?, phonetic_text = ?, translated_text = ?
         WHERE content_id = ?
     """, (new_original_text, new_pinyin_text, new_translated_text, content_id))
     
@@ -502,7 +514,7 @@ def api_update_media_lyrics(content_id: int, req: LyricsUpdateRequest):
     
     cursor.execute("""
         UPDATE media_content
-        SET original_text = ?, pinyin_text = ?, translated_text = ?
+        SET original_text = ?, phonetic_text = ?, translated_text = ?
         WHERE content_id = ?
     """, (original_text, pinyin_text, translated_text, content_id))
     
@@ -529,14 +541,14 @@ def api_add_vocab_manual(req: VocabManualAddRequest):
     if existing:
         cursor.execute("""
             UPDATE vocabulary_deck 
-            SET translation = ?, context_sentence = ?, pinyin = ?, box_number = ?, next_review_date = ?
+            SET translation = ?, context_sentence = ?, phonetic = ?, box_number = ?, next_review_date = ?
             WHERE vocab_id = ?
         """, (req.translation, req.context_sentence, req.pinyin, req.box_number, next_review, existing[0]))
         vocab_id = existing[0]
         status = "updated"
     else:
         cursor.execute("""
-            INSERT INTO vocabulary_deck (user_id, word, translation, context_sentence, pinyin, box_number, next_review_date)
+            INSERT INTO vocabulary_deck (user_id, word, translation, context_sentence, phonetic, box_number, next_review_date)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (req.user_id, req.word, req.translation, req.context_sentence, req.pinyin, req.box_number, next_review))
         vocab_id = cursor.lastrowid
@@ -564,7 +576,7 @@ def api_update_vocab_by_id(vocab_id: int, req: VocabUpdateRequest):
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE vocabulary_deck 
-        SET word = ?, translation = ?, context_sentence = ?, pinyin = ?, box_number = ?, next_review_date = ?
+        SET word = ?, translation = ?, context_sentence = ?, phonetic = ?, box_number = ?, next_review_date = ?
         WHERE vocab_id = ?
     """, (req.word, req.translation, req.context_sentence, req.pinyin, req.box_number, req.next_review_date, vocab_id))
     if cursor.rowcount == 0:
