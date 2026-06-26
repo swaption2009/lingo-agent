@@ -15,6 +15,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const viewAuth = document.getElementById("view-auth");
   const viewDashboard = document.getElementById("view-dashboard");
+  const viewSharedLesson = document.getElementById("view-shared-lesson");
+  const btnLessonLogin = document.getElementById("btn-lesson-login");
+  const btnLessonDashboard = document.getElementById("btn-lesson-dashboard");
 
   // Auth views
   const tabBtnLogin = document.getElementById("tab-btn-login");
@@ -39,15 +42,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- SESSION MANAGEMENT ---
   function checkSession() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const lessonId = urlParams.get("lesson");
+
     const savedUser = localStorage.getItem("lingo_active_user");
     if (savedUser) {
       try {
         activeUser = JSON.parse(savedUser);
-        showDashboard();
       } catch (e) {
         localStorage.removeItem("lingo_active_user");
-        showAuth();
       }
+    }
+
+    if (lessonId) {
+      showSharedLesson(lessonId);
+    } else if (activeUser) {
+      showDashboard();
     } else {
       showAuth();
     }
@@ -57,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     activeUser = null;
     viewAuth.classList.remove("hidden");
     viewDashboard.classList.add("hidden");
+    if(viewSharedLesson) viewSharedLesson.classList.add("hidden");
     headerUserBadge.classList.add("hidden");
     loadUsersList();
   }
@@ -64,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function showDashboard() {
     viewAuth.classList.add("hidden");
     viewDashboard.classList.remove("hidden");
+    if(viewSharedLesson) viewSharedLesson.classList.add("hidden");
     headerUserBadge.classList.remove("hidden");
     
     currentUserName.textContent = activeUser.username;
@@ -112,7 +124,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selected) {
       activeUser = selected;
       localStorage.setItem("lingo_active_user", JSON.stringify(activeUser));
-      showDashboard();
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      if(urlParams.get("lesson")) {
+        showSharedLesson(urlParams.get("lesson"));
+      } else {
+        showDashboard();
+      }
     }
   });
 
@@ -131,7 +149,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const newUser = await response.json();
       activeUser = newUser;
       localStorage.setItem("lingo_active_user", JSON.stringify(activeUser));
-      showDashboard();
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      if(urlParams.get("lesson")) {
+        showSharedLesson(urlParams.get("lesson"));
+      } else {
+        showDashboard();
+      }
     } catch (e) {
       alert("Registration failed. Please try again.");
     }
@@ -309,6 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td><span class="badge">${escapeHTML(m.difficulty)}</span></td>
         <td><code style="color: var(--color-secondary);">${escapeHTML(m.video_id || "-")}</code></td>
         <td class="action-buttons-cell">
+          <button class="btn btn-primary btn-small btn-share" data-vid="${m.video_id}" title="Copy Share Link" style="background: rgba(0, 240, 255, 0.1); color: var(--accent-cyan); border: 1px solid var(--accent-cyan);">Share 🔗</button>
           <button class="btn btn-secondary btn-small btn-edit" data-id="${m.content_id}">Edit</button>
           <button class="btn btn-danger btn-small btn-delete" data-id="${m.content_id}">Delete</button>
         </td>
@@ -317,6 +342,24 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Attach event listeners to buttons
+    tbody.querySelectorAll(".btn-share").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const vid = btn.dataset.vid;
+        if (!vid || vid === "null") {
+          alert("This media does not have a video ID for sharing.");
+          return;
+        }
+        const shareUrl = `${window.location.origin}${window.location.pathname}?lesson=${vid}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          const originalText = btn.innerHTML;
+          btn.innerHTML = "Copied! ✓";
+          setTimeout(() => btn.innerHTML = originalText, 2000);
+        }).catch(() => {
+          alert("Failed to copy link: " + shareUrl);
+        });
+      });
+    });
+
     tbody.querySelectorAll(".btn-edit").forEach(btn => {
       btn.addEventListener("click", () => openMediaModal(parseInt(btn.dataset.id)));
     });
@@ -635,14 +678,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(`/api/media/${contentId}`);
       const media = await response.json();
       
-      generateQuizSession(media);
+      const vocabRes = await fetch(`/api/vocab?user_id=${activeUser.user_id}`);
+      const vocabData = await vocabRes.json();
+      const deck = vocabData.deck || [];
+      
+      generateQuizSession(media, deck);
     } catch (e) {
       alert("Failed to load practice media content.");
     }
   });
 
-  // Generates 3 questions based on lyrics
-  function generateQuizSession(media) {
+  function generateQuizSession(media, deck) {
     const originalLines = media.original_text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
     const translatedLines = media.translated_text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
     const pinyinLines = media.pinyin_text ? media.pinyin_text.split("\n").map(l => l.trim()) : [];
@@ -659,26 +705,48 @@ document.addEventListener("DOMContentLoaded", () => {
       return text.replace(/^\[\d+(\.\d+)?\]/, "").trim();
     }
 
+    // Add 1-3 vocab questions if there are cards due
+    const today = new Date().toISOString().substring(0, 10);
+    const dueCards = deck.filter(c => c.next_review_date <= today);
+    shuffleArray(dueCards);
+    const vocabToTest = dueCards.slice(0, 3);
+    
+    vocabToTest.forEach(card => {
+      // Multiple choice for vocab translation
+      const wrongOptions = deck.filter(c => c.vocab_id !== card.vocab_id).map(c => c.translation);
+      shuffleArray(wrongOptions);
+      const selectedWrong = wrongOptions.slice(0, 3);
+      const choices = [card.translation, ...selectedWrong];
+      // If we don't have enough wrong options, generate some generic ones
+      while(choices.length < 4) choices.push("Incorrect translation " + choices.length);
+      shuffleArray(choices);
+      
+      questions.push({
+        type: "multiple-choice",
+        prompt: `Vocabulary: What does this mean?`,
+        mainText: card.word,
+        helperText: card.pinyin || "",
+        context: card.context_sentence,
+        correctAnswer: card.translation,
+        choices: choices,
+        vocabCard: card // attach card object to track later
+      });
+    });
+
     for (let idx = 0; idx < totalQuestions; idx++) {
-      // Pick a random line (guaranteeing variety if possible)
       const lineIdx = Math.floor((idx / totalQuestions) * originalLines.length);
       const origRaw = originalLines[lineIdx];
       const origClean = cleanLine(origRaw);
       const transClean = cleanLine(translatedLines[lineIdx] || "");
       const pinyinClean = pinyinLines[lineIdx] ? cleanLine(pinyinLines[lineIdx]) : "";
 
-      // Decide Question Type
-      // Q1: Match correct English Translation (Multi-choice)
-      // Q2: Complete the sentence
       const qType = idx % 2 === 0 ? "translation" : "blank";
 
       if (qType === "translation") {
-        // Collect wrong options from other translated lines
         const wrongOptions = translatedLines
           .map(l => cleanLine(l))
           .filter(l => l !== transClean && l.length > 0);
         
-        // Shuffle and pick 3 wrong options
         shuffleArray(wrongOptions);
         const selectedWrong = wrongOptions.slice(0, 3);
         
@@ -695,30 +763,26 @@ document.addEventListener("DOMContentLoaded", () => {
           choices: choices
         });
       } else {
-        // Complete the sentence (Fill in the blank)
         let words = origClean.split(/\s+/).filter(w => w.length > 0);
         let blankWord = "";
         let promptText = "";
 
         if (media.language === "Chinese" && origClean.length > 4) {
-          // Chinese segment: pick 2 characters from middle
           const start = Math.floor(origClean.length / 2) - 1;
           blankWord = origClean.substring(start, start + 2);
           promptText = origClean.substring(0, start) + "_______" + origClean.substring(start + 2);
         } else if (words.length > 2) {
-          // Pick a random word from middle
           const wordIdx = Math.floor(words.length / 2);
           blankWord = words[wordIdx].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
           words[wordIdx] = "_______";
           promptText = words.join(" ");
         } else {
-          // Fallback: translate the whole line
           questions.push({
             type: "text",
             prompt: `Translate this sentence to English:`,
             mainText: origClean,
             helperText: pinyinClean,
-            context: transClean, // english translation as hint
+            context: transClean,
             correctAnswer: transClean
           });
           continue;
@@ -726,30 +790,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
         questions.push({
           type: "text",
-          prompt: `Complete the sentence with the missing word/characters:`,
+          prompt: `Fill in the missing part:`,
           mainText: promptText,
           helperText: pinyinClean,
-          context: `English Hint: "${transClean}"`,
+          context: transClean,
           correctAnswer: blankWord
         });
       }
     }
+
+    shuffleArray(questions);
 
     activeQuizSession = {
       mediaId: media.content_id,
       mediaTitle: media.title,
       questions: questions,
       currentIndex: 0,
-      score: 0
+      score: 0,
+      vocabResults: [] // To store which cards were right/wrong
     };
 
-    // Show Quiz View
     document.getElementById("practice-selector").classList.add("hidden");
     document.getElementById("practice-active-area").classList.remove("hidden");
-    document.getElementById("practice-results-area").classList.add("hidden");
-    
-    document.getElementById("quiz-media-title").textContent = media.title;
-
     showQuestion(0);
   }
 
@@ -821,6 +883,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isCorrect) {
       activeQuizSession.score++;
     }
+    
+    if (q.vocabCard) {
+      activeQuizSession.vocabResults.push({ card: q.vocabCard, isCorrect });
+    }
 
     // Display Feedback
     const feedbackBox = document.getElementById("quiz-feedback-banner");
@@ -875,8 +941,36 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
+      
+      // Also update spaced repetition for tested vocab
+      if(activeQuizSession.vocabResults && activeQuizSession.vocabResults.length > 0) {
+        for(let r of activeQuizSession.vocabResults) {
+          let c = r.card;
+          let newBox = r.isCorrect ? Math.min(5, c.box_number + 1) : Math.max(1, c.box_number - 1);
+          
+          let nextDate = new Date();
+          if(newBox === 1) nextDate.setDate(nextDate.getDate() + 1);
+          else if(newBox === 2) nextDate.setDate(nextDate.getDate() + 2);
+          else if(newBox === 3) nextDate.setDate(nextDate.getDate() + 7);
+          else if(newBox === 4) nextDate.setDate(nextDate.getDate() + 14);
+          else nextDate.setMonth(nextDate.getMonth() + 1);
+          
+          await fetch(`/api/vocab/id/${c.vocab_id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              word: c.word,
+              translation: c.translation,
+              context_sentence: c.context_sentence,
+              pinyin: c.pinyin,
+              box_number: newBox,
+              next_review_date: nextDate.toISOString().substring(0, 10)
+            })
+          });
+        }
+      }
+
       if (response.ok) {
-        // Exit and switch to history
         switchTab("history");
       } else {
         alert("Failed to log results. Exiting to dashboard.");
@@ -1017,3 +1111,194 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 });
+// This code will be injected into app.js
+let ytPlayer = null;
+let currentLessonData = null;
+
+async function showSharedLesson(videoId) {
+  viewAuth.classList.add("hidden");
+  viewDashboard.classList.add("hidden");
+  viewSharedLesson.classList.remove("hidden");
+  headerUserBadge.classList.add("hidden"); // Optional: Keep hidden or show logged-in user
+
+  if (activeUser) {
+    headerUserBadge.classList.remove("hidden");
+    btnLessonLogin.classList.add("hidden");
+    btnLessonDashboard.classList.remove("hidden");
+  } else {
+    btnLessonLogin.classList.remove("hidden");
+    btnLessonDashboard.classList.add("hidden");
+  }
+
+  btnLessonDashboard.onclick = () => {
+    window.history.pushState({}, document.title, window.location.pathname);
+    showDashboard();
+  };
+  btnLessonLogin.onclick = () => {
+    viewSharedLesson.classList.add("hidden");
+    showAuth();
+  };
+
+  try {
+    const res = await fetch(`/api/share/${videoId}`);
+    if (!res.ok) throw new Error("Lesson not found");
+    const data = await res.json();
+    currentLessonData = data;
+    
+    document.getElementById("lesson-title").textContent = data.title;
+    document.getElementById("lesson-tutorial-content").innerHTML = data.tutorial.replace(/\n/g, '<br>');
+    
+    // Process lyrics
+    const originalLines = data.original_text.split('\n');
+    const pinyinLines = (data.pinyin_text || "").split('\n');
+    const transLines = (data.translated_text || "").split('\n');
+    
+    const lyricsBox = document.getElementById("lesson-lyrics-box");
+    lyricsBox.innerHTML = "";
+    
+    const linesData = [];
+    
+    for(let i=0; i<originalLines.length; i++) {
+      let orig = originalLines[i];
+      let timeMatch = orig.match(/^\[([\d\.]+)\](.*)/);
+      let t = 0;
+      let text = orig;
+      if (timeMatch) {
+        t = parseFloat(timeMatch[1]);
+        text = timeMatch[2];
+      }
+      
+      let pinyin = pinyinLines[i] || "";
+      if(pinyin.startsWith("[")) pinyin = pinyin.replace(/^\[[\d\.]+\]/, "");
+      
+      let trans = transLines[i] || "";
+      if(trans.startsWith("[")) trans = trans.replace(/^\[[\d\.]+\]/, "");
+      
+      linesData.push({ time: t, text, pinyin, trans });
+      
+      const div = document.createElement("div");
+      div.className = "lyric-line";
+      div.style.padding = "10px";
+      div.style.borderBottom = "1px solid var(--bg-glass-border)";
+      div.style.cursor = "pointer";
+      div.dataset.time = t;
+      div.innerHTML = `
+        <div style="font-size: 1.2rem; font-weight: 500;">${text}</div>
+        <div style="font-size: 0.9rem; color: var(--accent-cyan);">${pinyin}</div>
+        <div style="font-size: 0.85rem; color: var(--text-secondary);">${trans}</div>
+      `;
+      div.onclick = () => {
+        if(ytPlayer && ytPlayer.seekTo) {
+          ytPlayer.seekTo(t, true);
+          ytPlayer.playVideo();
+        }
+      };
+      lyricsBox.appendChild(div);
+    }
+    
+    // Highlight loop
+    setInterval(() => {
+      if(!ytPlayer || !ytPlayer.getCurrentTime) return;
+      const ct = ytPlayer.getCurrentTime();
+      let activeIndex = -1;
+      for(let i=0; i<linesData.length; i++){
+        if(ct >= linesData[i].time) activeIndex = i;
+      }
+      const children = lyricsBox.children;
+      for(let i=0; i<children.length; i++){
+        if(i === activeIndex) {
+          children[i].style.background = "rgba(0, 240, 255, 0.1)";
+          children[i].style.borderLeft = "3px solid var(--accent-cyan)";
+          // Simple auto-scroll
+          if(children[i].offsetTop > lyricsBox.scrollTop + lyricsBox.clientHeight - 100) {
+            lyricsBox.scrollTop = children[i].offsetTop - 100;
+          }
+        } else {
+          children[i].style.background = "none";
+          children[i].style.borderLeft = "none";
+        }
+      }
+    }, 500);
+    
+    // Process vocabulary
+    const vocabBox = document.getElementById("lesson-vocab-box");
+    vocabBox.innerHTML = "";
+    let dictionary = [];
+    try { dictionary = JSON.parse(data.dictionary_json); } catch(e){}
+    
+    dictionary.forEach(v => {
+      const vdiv = document.createElement("div");
+      vdiv.className = "vocab-item glass-panel";
+      vdiv.style.padding = "10px";
+      vdiv.style.marginBottom = "10px";
+      vdiv.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong style="font-size: 1.1rem;">${v.word}</strong> <span style="color:var(--accent-pink);">${v.pinyin}</span>
+            <div style="font-size:0.85rem;">${v.translation}</div>
+          </div>
+          <button class="btn btn-secondary btn-sm save-vocab-btn" style="padding: 4px 8px; font-size: 0.7rem;">Save Word</button>
+        </div>
+      `;
+      const saveBtn = vdiv.querySelector(".save-vocab-btn");
+      saveBtn.onclick = () => {
+        if(!activeUser) {
+          alert("Please login or register to save vocabulary.");
+          viewSharedLesson.classList.add("hidden");
+          showAuth();
+          return;
+        }
+        // Save word logic
+        fetch("/api/vocab/manual", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            user_id: activeUser.user_id,
+            word: v.word,
+            translation: v.translation,
+            context_sentence: `From ${data.title}: ${v.explanation || ''}`,
+            pinyin: v.pinyin,
+            box_number: 1
+          })
+        }).then(r => r.json()).then(res => {
+          saveBtn.textContent = "Saved ✓";
+          saveBtn.disabled = true;
+        }).catch(err => alert("Error saving word"));
+      };
+      vocabBox.appendChild(vdiv);
+    });
+
+    // Init YouTube Player
+    const container = document.getElementById("youtube-player-container");
+    container.innerHTML = `<div id="yt-player"></div>`;
+    
+    // Check if YT API is ready
+    if(window.YT && window.YT.Player) {
+      ytPlayer = new YT.Player('yt-player', {
+        height: '100%',
+        width: '100%',
+        videoId: videoId,
+        playerVars: { 'playsinline': 1 },
+        events: {
+          'onReady': (e) => { e.target.playVideo(); }
+        }
+      });
+    } else {
+      window.onYouTubeIframeAPIReady = () => {
+        ytPlayer = new YT.Player('yt-player', {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: { 'playsinline': 1 },
+          events: {
+            'onReady': (e) => { e.target.playVideo(); }
+          }
+        });
+      };
+    }
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("lesson-title").textContent = "Lesson not found or error loading.";
+  }
+}
