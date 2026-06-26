@@ -29,7 +29,7 @@ def get_user_profile(user_id: int = 1) -> dict:
     return {"error": "User not found"}
 
 @mcp.tool()
-def search_learning_media(query: str, language: str = "Chinese") -> dict:
+def search_learning_media(query: str, language: str = "") -> dict:
     """Searches for songs or movies available in the database for learning.
     
     Args:
@@ -39,7 +39,7 @@ def search_learning_media(query: str, language: str = "Chinese") -> dict:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT content_id, title, artist_or_movie, media_type, difficulty, pinyin_text, video_id 
+    SELECT content_id, title, artist_or_movie, media_type, difficulty, phonetic_text, video_id 
     FROM media_content 
     WHERE language = ? AND (title LIKE ? OR artist_or_movie LIKE ?)
     """, (language, f"%{query}%", f"%{query}%"))
@@ -61,7 +61,7 @@ def search_learning_media(query: str, language: str = "Chinese") -> dict:
 
 @mcp.tool()
 def get_media_content(content_id: int) -> dict:
-    """Retrieves the full content lines, translations, and optionally pinyin for a specific song or movie.
+    """Retrieves the full content lines, translations, and optionally phonetic for a specific song or movie.
     
     Args:
         content_id: The unique ID of the media content.
@@ -69,7 +69,7 @@ def get_media_content(content_id: int) -> dict:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT content_id, title, artist_or_movie, media_type, original_text, translated_text, pinyin_text, video_id 
+    SELECT content_id, title, artist_or_movie, media_type, original_text, translated_text, phonetic_text, video_id 
     FROM media_content WHERE content_id = ?
     """, (content_id,))
     row = cursor.fetchone()
@@ -96,7 +96,7 @@ def add_vocabulary_word(word: str, translation: str, context: str, user_id: int 
         translation: The native language translation.
         context: The line or sentence where the word was encountered.
         user_id: The ID of the user. Defaults to 1.
-        pinyin: Hanyu Pinyin for Chinese words. Defaults to None.
+        phonetic: Hanyu Phonetic for  words. Defaults to None.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -113,7 +113,7 @@ def add_vocabulary_word(word: str, translation: str, context: str, user_id: int 
         return {"status": "already_exists", "message": f"'{word}' is already in your vocabulary deck."}
         
     cursor.execute("""
-    INSERT INTO vocabulary_deck (user_id, word, translation, context_sentence, pinyin, box_number, next_review_date)
+    INSERT INTO vocabulary_deck (user_id, word, translation, context_sentence, phonetic, box_number, next_review_date)
     VALUES (?, ?, ?, ?, ?, 1, ?)
     """, (user_id, word, translation, context, pinyin, next_review))
     conn.commit()
@@ -137,7 +137,7 @@ def get_vocab_deck(user_id: int = 1) -> dict:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT vocab_id, word, translation, context_sentence, pinyin, box_number, next_review_date 
+    SELECT vocab_id, word, translation, context_sentence, phonetic, box_number, next_review_date 
     FROM vocabulary_deck WHERE user_id = ?
     """, (user_id,))
     rows = cursor.fetchall()
@@ -187,7 +187,7 @@ def reset_vocab_deck(user_id: int = 1) -> dict:
 
 @mcp.tool()
 def mcp_analyze_youtube_video(video_id: str, title: str = "") -> dict:
-    """Fetches and transcribes a YouTube video, generating Hanyu Pinyin and English translations.
+    """Fetches and transcribes a YouTube video, generating Hanyu Phonetic and English translations.
     
     Args:
         video_id: The 11-character YouTube video ID.

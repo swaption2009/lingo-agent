@@ -27,7 +27,7 @@ def initialize_database():
     )
     """)
 
-    # Create media_content table with pinyin_text and video_id support.
+    # Create media_content table with phonetic_text and video_id support.
     # dictionary_json / tutorial / source cache the full analysis so that a repeat
     # view of the same video is a pure DB read (no LLM call) and keeps its timing.
     cursor.execute("""
@@ -40,7 +40,7 @@ def initialize_database():
         difficulty TEXT NOT NULL,
         original_text TEXT NOT NULL,
         translated_text TEXT NOT NULL,
-        pinyin_text TEXT,
+        phonetic_text TEXT,
         video_id TEXT,
         dictionary_json TEXT,
         tutorial TEXT,
@@ -48,7 +48,7 @@ def initialize_database():
     )
     """)
 
-    # Create vocabulary_deck table with pinyin support
+    # Create vocabulary_deck table with phonetic support
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS vocabulary_deck (
         vocab_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +56,7 @@ def initialize_database():
         word TEXT NOT NULL,
         translation TEXT NOT NULL,
         context_sentence TEXT NOT NULL,
-        pinyin TEXT,
+        phonetic TEXT,
         box_number INTEGER DEFAULT 1,
         next_review_date TEXT NOT NULL,
         FOREIGN KEY(user_id) REFERENCES users(user_id)
@@ -115,7 +115,7 @@ def initialize_database():
 
     cursor.executemany(
         """
-    INSERT INTO media_content (title, artist_or_movie, media_type, language, difficulty, original_text, translated_text, pinyin_text, video_id)
+    INSERT INTO media_content (title, artist_or_movie, media_type, language, difficulty, original_text, translated_text, phonetic_text, video_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
         samples,
@@ -124,7 +124,7 @@ def initialize_database():
     # Insert default quiz histories
     quiz_samples = [
         (1, 1, 3, 3, "Perfect score! Pinyin learning is going well.", "2026-06-20T12:00:00Z"),
-        (1, 2, 2, 3, "Needs more study on pinyin tones", "2026-06-20T15:30:00Z")
+        (1, 2, 2, 3, "Needs more study on phonetic tones", "2026-06-20T15:30:00Z")
     ]
     cursor.executemany(
         """
